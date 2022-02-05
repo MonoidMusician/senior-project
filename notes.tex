@@ -1,0 +1,262 @@
+\documentclass[11pt, twoside, reqno]{book}
+\usepackage{amssymb, amsthm, amsmath, amsfonts}
+\usepackage{multicol}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{amsrefs}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{verbatim}
+\usepackage{calc}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable,raster}
+\usepackage[toc,page]{appendix}
+\usepackage{rotating}
+\usepackage{pdflscape}
+\appendixpageoff
+
+\usepackage{prftree}
+
+\usepackage{bardtex}
+
+\iftrue
+\makeatletter
+\renewcommand{\chaptermark}[1]{%
+  \markboth{%
+    \chaptername\ \thechapter. \ #1
+  }{}%
+}
+
+\renewcommand{\sectionmark}[1]{\markright{\thesection. \ #1}}
+
+\fancyhead{} % Clears the standard fancy style
+\fancyhead[L]{\scshape \nouppercase{\rightmark}}
+\fancyhead[R]{\scshape \nouppercase{\leftmark}}
+
+\renewcommand\tableofcontents{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\contentsname
+        \@mkboth{%
+           \contentsname}{\contentsname}}%
+    \@starttoc{toc}%
+    \if@restonecol\twocolumn\fi
+    }
+
+\makeatother
+\fi
+
+\iftrue
+\usepackage{unicode-math}
+\setmainfont{Libertinus Serif}
+\setsansfont[Scale=MatchUppercase]{Libertinus Sans}
+\setmathfont{Libertinus Math}
+%\setcodefont{Inconsolata}
+\else
+\ifxetex
+\RequirePackage[libertine]{newtxmath}
+\RequirePackage[tt=false]{libertine}
+\setmonofont[StylisticSet=3]{inconsolata}
+\else
+\ifluatex
+\RequirePackage[libertine]{newtxmath}
+\RequirePackage[tt=false]{libertine}
+\setmonofont[StylisticSet=3]{inconsolata}
+\else
+\RequirePackage[tt=false, type1=true]{libertine}
+\RequirePackage[varqu]{zi4}
+\RequirePackage[libertine]{newtxmath}
+\fi
+\fi
+\fi
+
+%Your macros, if you have any.
+\DeclareMathOperator{\imax}{imax}
+\DeclareMathOperator{\ifop}{if}
+
+\begin{document}
+
+\renewcommand{\contentsname}{Contents}
+\fancyhead[LE]{\textit{\nouppercase{\leftmark}}}
+\fancyhead[RO]{\textit{\nouppercase{\rightmark}}}
+
+\section{Generalized Dershowitz-Manna Ordering}
+Let $A, M$ be well-ordered sets. Construct a well-ordering on the set of functions with finite support on non-least elements
+$$\mathcal{F} = \{\ f : A \to M\ \ |\ \ \{\ a : A\ |\ \exists m : M, m < f(a)\ \}\ \text{finite}\ \}$$ as follows.
+
+First, define $\text{decr}(f, g) = \{\ b : A\ \ |\ \ g(b) < f(b)\ \}$ to be the set of indices which strictly decrease from $f$ to $g$.
+
+Next, define $\text{incr}(f, g) = \{\ a : A\ \ |\ \ g(a) \nleq f(a)\ \}$ to be the set of indices which are neither decreasing nor constant from $f$ to $g$.
+
+Finally, for subsets $X, Y \subseteq A$, say $X \ll Y$ when for every $x \in X$ there exists $y \in Y$ such that $y > x$. Note that if $X_1 \ll Y_1$ and $X_2 \ll Y_2$ then $X_1 \cup X_2 \ll Y_1 \cap Y_2$.
+
+Now we say that $f \ge g$ if $\text{incr}(f, g) \ll \text{decr}(f, g)$.
+
+It is reflexive since $\text{incr}(f, f) = \emptyset$. It is also transitive: assuming $f \ge g, g \ge h$, then $\text{incr}(f, h) \subseteq \text{incr}(f, g) \cup \text{incr}(g, h) \ll \text{decr}(f, g) \cap \text{decr}(g, h) \subseteq \text{decr}(f, h)$ by transitivity and the above observation, thus $f \ge h$.
+
+Intuition for why this is a well-order: Clearly no single index can decrease continually, and some indices can increase/shift uncomparably but only when covered by a larger index decreasing.
+
+\section{Sweetened and Condensed Type Theory}
+%$$\Pi\cdot\mathcal{U}\cdot\biggl(\mathcal{U}\mapsto\Pi\cdot\bigl(\Pi\cdot\alpha\cdot(\alpha\mapsto\mathcal{U})\bigr)\cdot\Bigl(\bigl(\Pi\cdot\alpha\cdot(\alpha\mapsto\mathcal{U})\bigr)\mapsto\mathcal{U}\Bigr)\biggr)$$
+
+There are five typing judgments:
+
+\begin{displaymath}
+\prftree[r]{var}{\Gamma,\ x : T,\ \Gamma\prime \vdash x : T}\hspace{3em}\
+\prftree[r]{univ}{\Gamma \vdash \mathcal{U} : \mathcal{U}}
+\end{displaymath}\\
+\begin{displaymath}
+\prftree[r]{lam}{\Gamma \vdash T : \mathcal{U}}{\Gamma,\ x : T \vdash b : B}{\Gamma \vdash (x : T) \to b : \Pi\ T\ (x : T) \to B}
+\end{displaymath}\\
+\begin{displaymath}
+\prftree[r]{app}{\Gamma \vdash f : \Pi\ T\ F}{\Gamma \vdash t : T}{\Gamma \vdash f t : F t}
+\end{displaymath}\\
+\begin{displaymath}
+\prftree[r]{pi}{\Gamma \vdash \Pi : \Pi\ \mathcal{U}\ (T : \mathcal{U}) \to \Pi\ (\Pi\ T\ (\_ : T) \to \mathcal{U})\ (\_ : \Pi\ T\ (\_ : T) \to \mathcal{U}) \to \mathcal{U}}
+\end{displaymath}
+
+And eleven beta reduction rules:
+
+\begin{displaymath}
+\prftree[r]{beta-pi}{((x : T) \to \Pi)\ v \equiv \Pi}\hspace{2em}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{beta-univ}{((x : T) \to \mathcal{U})\ v \equiv \mathcal{U}}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{beta-app}{((x : T) \to f)\ v \equiv f\prime}{((x : T) \to a)\ v \equiv a\prime}{((x : T) \to f a)\ v \equiv f\prime a\prime}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{beta-var-Y}{((x : T) \to x)\ v \equiv v}\hspace{1.25em}\
+\prftree[r]{beta-var-N}{((x : T) \to y)\ v \equiv y}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{beta-lam-Y}{((x : T) \to (x : L) \to b)\ v \equiv (x : ((x : T) \to L)\ v) \to b}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{beta-lam-N}{((x : T) \to (y : L) \to b)\ v \equiv (y : ((x : T) \to L)\ v) \to ((x : T) \to b)\ v}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{cong-app}{f \equiv f\prime}{a \equiv a\prime}{f a \equiv f\prime a\prime}\hspace{1em}\
+\prftree[r]{cong-lam}{T \equiv T\prime}{b \equiv b\prime}{(x : T) \to b \equiv (x : T\prime) \to b\prime}
+\end{displaymath}
+\begin{displaymath}
+\prftree[r]{refl}{a \equiv a}\hspace{1em}\hspace{1em}\
+\prftree[r]{trans}{a \equiv b}{b \equiv c}{a \equiv c}
+\end{displaymath}
+
+Regularity:
+
+\begin{landscape}
+
+Let $\Xi = \Pi\ \mathcal{U}\ (T : \mathcal{U}) \to \Pi\ (\Pi\ T\ (\_ : T) \to \mathcal{U})\ (\_ : \Pi\ T\ (\_ : T) \to \mathcal{U}) \to \mathcal{U}$ abbreviate the type of $\Pi$, let $\text{Arr}\ I\ O = \Pi\ I\ ((\_ : I) \to O)$ abbreviate the type of functions from $I$ to $O$ and $\text{Fun} = \text{Arr}\ \mathcal{U}\ \mathcal{U} = \Pi\ \mathcal{U}\ ((\_ : \mathcal{U}) \to \mathcal{U})$ abbreviate the type of functors. We show that $\Gamma \vdash \Xi : \mathcal{U}$.
+
+\begin{displaymath}
+\scalebox{0.4}{
+\prftree{
+  \prftree
+    {\prftree{\Gamma \vdash \Pi : \Xi}}
+    {\prftree{\Gamma \vdash \mathcal{U} : \mathcal{U}}}
+    {\Gamma \vdash \Pi\ \mathcal{U} : \Pi\ \text{Fun}\ (\_ : \text{Fun}) \to \mathcal{U}}
+}{
+  \prftree
+  {\prftree{\Gamma \vdash \mathcal{U} : \mathcal{U}}}
+  {\prftree
+    {\prftree
+      {\prftree{\Gamma,\ T : \mathcal{U} \vdash \Pi : \Xi}}
+      {\prftree
+        {\prftree
+          {\prftree{\Gamma,\ T : \mathcal{U} \vdash \Pi : \Xi}}
+          {\prftree{\Gamma,\ T : \mathcal{U} \vdash T : \mathcal{U}}}
+          {\Gamma,\ T : \mathcal{U} \vdash \Pi\ T : \Pi\ (\text{Arr}\ T\ \mathcal{U})\ (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U}}
+        }
+        {\prftree
+          {\prftree{\Gamma,\ T : \mathcal{U} \vdash T : \mathcal{U}}}
+          {\prftree{\Gamma,\ T : \mathcal{U},\ \_ : T \vdash \mathcal{U} : \mathcal{U}}}
+          {\Gamma,\ T : \mathcal{U} \vdash (\_ : T) \to \mathcal{U} : \text{Arr}\ T\ \mathcal{U}}
+        }
+        {\Gamma,\ T : \mathcal{U} \vdash \Pi\ T\ (\_ : T) \to \mathcal{U} : \mathcal{U}}
+      }
+      {\Gamma,\ T : \mathcal{U} \vdash \Pi\ (\text{Arr}\ T\ \mathcal{U}) : \text{Arr}\ (\text{Arr}\ (\text{Arr}\ T\ \mathcal{U})\ \mathcal{U})\ \mathcal{U}}
+    }
+    {\prftree
+      {\prftree
+        {\prftree
+          {\prftree{\Gamma,\ T : \mathcal{U} \vdash \Pi : \Xi}}
+          {\prftree{\Gamma,\ T : \mathcal{U} \vdash T : \mathcal{U}}}
+          {\Gamma,\ T : \mathcal{U} \vdash \Pi\ T : \Pi\ (\text{Arr}\ T\ \mathcal{U})\ (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U}}
+        }
+        {\prftree
+          {\prftree{\Gamma,\ T : \mathcal{U} \vdash T : \mathcal{U}}}
+          {\prftree{\Gamma,\ T : \mathcal{U},\ \_ : T \vdash \mathcal{U} : \mathcal{U}}}
+          {\Gamma,\ T : \mathcal{U} \vdash (\_ : T) \to \mathcal{U} : \text{Arr}\ T\ \mathcal{U}}
+        }
+        {\Gamma,\ T : \mathcal{U} \vdash \text{Arr}\ T\ \mathcal{U} : \mathcal{U}}
+      }
+      {\prftree{\Gamma,\ T : \mathcal{U} \vdash \mathcal{U} : \mathcal{U}}}
+      {\Gamma,\ T : \mathcal{U} \vdash (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U} : \text{Arr}\ (\text{Arr}\ T\ \mathcal{U})\ \mathcal{U}}
+    }
+    {\Gamma,\ T : \mathcal{U} \vdash \Pi\ (\text{Arr}\ T\ \mathcal{U})\ (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U} : \mathcal{U}}
+  }
+  {\Gamma \vdash (T : \mathcal{U}) \to \Pi\ (\text{Arr}\ T\ \mathcal{U})\ (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U} : \text{Fun}}
+}{\Gamma \vdash \Pi\ \mathcal{U}\ (T : \mathcal{U}) \to \Pi\ (\text{Arr}\ T\ \mathcal{U})\ (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U} : \mathcal{U}}
+}
+\end{displaymath}
+\end{landscape}
+
+
+\begin{landscape}
+
+Let $\Xi_{i,o} = \Pi_{i+1,i+1\lor o+1}\ \mathcal{U_i}\ (T : \mathcal{U_i}) \to \Pi_{i\lor o+1, i+1\lor o+1}\ (\Pi_{i,o+1}\ T\ (\_ : T) \to \mathcal{U_o})\ (\_ : \Pi_{i,o+1}\ T\ (\_ : T) \to \mathcal{U_o}) \to \mathcal{U_{i \lor o}}$ abbreviate the type of $\Pi_{i,o}$, let $\text{Arr}\ I\ O = \Pi\ I\ ((\_ : I) \to O)$ abbreviate the type of functions from $I$ to $O$ and $\text{Fun}_{i,o} = \text{Arr}\ \mathcal{U_i}\ \mathcal{U_o} = \Pi_{i+1,o+1}\ \mathcal{U_i}\ ((\_ : \mathcal{U_i}) \to \mathcal{U_o})$ abbreviate the type of functors. We show that $\Gamma \vdash \Xi_{i,o} : \mathcal{U_{i+1\lor o+1}}$.
+
+\begin{displaymath}
+\scalebox{0.4}{
+\prftree{
+  \prftree
+    {\prftree{\Gamma \vdash \Pi : \Xi}}
+    {\prftree{\Gamma \vdash \mathcal{U_i} : \mathcal{U_{i+1}}}}
+    {\Gamma \vdash \Pi\ \mathcal{U_i} : \Pi\ \text{Fun}\ (\_ : \text{Fun}) \to \mathcal{U}}
+}{
+  \prftree
+  {\prftree{\Gamma \vdash \mathcal{U_i} : \mathcal{U_{i+1}}}}
+  {\prftree
+    {\prftree
+      {\prftree{\Gamma,\ T : \mathcal{U_i} \vdash \Pi : \Xi}}
+      {\prftree
+        {\prftree
+          {\prftree{\Gamma,\ T : \mathcal{U_i} \vdash \Pi : \Xi}}
+          {\prftree{\Gamma,\ T : \mathcal{U_i} \vdash T : \mathcal{U_i}}}
+          {\Gamma,\ T : \mathcal{U_i} \vdash \Pi_{i,o+2}\ T : \Pi\ (\text{Arr}\ T\ \mathcal{U_{o+1}})\ (\_ : \text{Arr}\ T\ \mathcal{U_{o+1}}) \to \mathcal{U_{i\lor o+2}}}
+        }
+        {\prftree
+          {\prftree{\Gamma,\ T : \mathcal{U_i} \vdash T : \mathcal{U_1}}}
+          {\prftree{\Gamma,\ T : \mathcal{U_i},\ \_ : T \vdash \mathcal{U_o} : \mathcal{U_{o+1}}}}
+          {\Gamma,\ T : \mathcal{U_i} \vdash (\_ : T) \to \mathcal{U_o} : \text{Arr}\ T\ \mathcal{U_{o+1}}}
+        }
+        {\Gamma,\ T : \mathcal{U_i} \vdash \Pi_{i,o+2}\ T\ (\_ : T) \to \mathcal{U_{o+1}} : \mathcal{U_{i\lor o+2}}}
+      }
+      {\Gamma,\ T : \mathcal{U_i} \vdash \Pi_{i\lor o+2, i+1\lor o+1}\ (\text{Arr}\ T\ \mathcal{U_{o+1}}) : \text{Arr}\ (\text{Arr}\ (\text{Arr}\ T\ \mathcal{U_{o+1}})\ \mathcal{U})\ \mathcal{U}}
+    }
+    {\prftree
+      {\prftree
+        {\prftree{\dots}}
+        {\Gamma,\ T : \mathcal{U_i} \vdash \text{Arr}\ T\ \mathcal{U} : \mathcal{U}}
+      }
+      {\prftree{\Gamma,\ T : \mathcal{U_i} \vdash \mathcal{U_{i\lor o}} : \mathcal{U_{i+1\lor o+1}}}}
+      {\Gamma,\ T : \mathcal{U_i} \vdash (\_ : \text{Arr}\ T\ \mathcal{U}) \to \mathcal{U_{i\lor o}} : \text{Arr}\ (\text{Arr}\ T\ \mathcal{U})\ \mathcal{U_{i+1\lor o+1}}}
+    }
+    {\Gamma,\ T : \mathcal{U_i} \vdash \Pi_{i\lor o+1, i+1\lor o+1}\ (\text{Arr}\ T\ \mathcal{U_{o+1}})\ (\_ : \text{Arr}\ T\ \mathcal{U_{o+1}}) \to \mathcal{U_{i\lor o}} : \mathcal{U_{i+1\lor o+1}}}
+  }
+  {\Gamma \vdash (T : \mathcal{U_i}) \to \Pi_{i\lor o+1, i+1\lor o+1}\ (\text{Arr}\ T\ \mathcal{U}_o)\ (\_ : \text{Arr}\ T\ \mathcal{U}_o) \to \mathcal{U_{i\lor o}} : \text{Fun}_{i, i+1\lor o+1}}
+}{\Gamma \vdash \Pi\ \mathcal{U_i}\ (T : \mathcal{U_i}) \to \Pi\ (\text{Arr}\ T\ \mathcal{U}_o)\ (\_ : \text{Arr}\ T\ \mathcal{U}_o) \to \mathcal{U_{i\lor o}} : \mathcal{U_{i+1 \lor o+1}}}
+}
+\end{displaymath}
+\end{landscape}
+
+\end{document}
+
+% end of file bardproj_template.tex
