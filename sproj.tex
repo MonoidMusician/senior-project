@@ -12,12 +12,44 @@
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable,raster}
 \usepackage[toc,page]{appendix}
+\usepackage{minted}
 \appendixpageoff
+
+
 
 \usepackage{prftree}
 
 \usepackage{bardtex}
 \styleoption{seniorproject}
+
+
+
+
+
+\titleformat{\section}[hang]
+{\LARGE}{
+%\vspace{-3\baselineskip}
+\hspace{-0.5\baselineskip}
+\thesection
+%
+\hspace{0.5\baselineskip}
+}
+{0pt}
+{\LARGE}
+%[\vspace{5\baselineskip}]
+
+\titleformat{\subsection}[hang]
+{\large\bfseries}{
+%\vspace{-3\baselineskip}
+\hspace{-0.5\baselineskip}
+\thesubsection
+%
+\hspace{0.3\baselineskip}
+}
+{0pt}
+{}
+%[\vspace{5\baselineskip}]
+
 
 \iftrue
 \makeatletter
@@ -73,9 +105,22 @@
 \fi
 \fi
 
+
+
+
+
+
 %Your macros, if you have any.
 \DeclareMathOperator{\imax}{imax}
 \DeclareMathOperator{\ifop}{if}
+\newcommand{\subsumedBy}{\unlhd}
+
+\newmintinline[inHS]{haskell}{}
+
+
+
+
+
 
 \begin{document}
 
@@ -85,11 +130,14 @@
 
 %For senior projects:
 \titlepg{The Algebra of Type Unification}{Verity James Scheel}
-    {December}{2021}
+    {May}{2022}
 
 \abstr
 
-Type unification takes type inference a step further by allowing non-local flow of information. By exposing the algebraic structure of type unification, we obtain even more flexibility as well as clarity in the implementation. The compositional nature of the algebras involved ensure correctness and reduce arbitrariness: properties such as associativity mean that implementation details of type inference do not leak in error messages, for example. This project is a discovery and implementation of these ideas for the type theory of the Dhall programming language, with implementation in PureScript.
+Type unification takes type inference a step further by allowing non-local flow of information.
+By exposing the algebraic structure of type unification, we obtain even more flexibility as well as clarity in the implementation.
+The compositional nature of the algebras involved ensure correctness and reduce arbitrariness: properties such as associativity mean that implementation details of type inference do not leak in error messages, for example.
+This project is a discovery and implementation of these ideas for the type theory of the Dhall programming language, with implementation in PureScript.
 
 
 \tableofcontents
@@ -103,7 +151,9 @@ Type unification takes type inference a step further by allowing non-local flow 
 %I would like to acknowledge the help I received from every person I have ever met in my life.
 
 \startmain
-
+%%%%
+%\singlespace
+%\setlength{\baselineskip}{16pt}
 
 \intro
 
@@ -111,16 +161,16 @@ The Dhall language is designed to be a straightforward, strongly-typed programmi
 Despite having sophisticated type system features such as dependent types, its standard is kept simple for ease of implementation.
 This is done by requiring each expression to contain extra type information, which is often redundant and tedious for the user to specify.
 In particular, lambda abstractions have to specify their input type, even though it can often be figured out from context:
-\begin{verbatim}
+\begin{minted}{haskell}
 \(n : Natural) -> n + 1
-\end{verbatim}
-In this example, the user has to specify that the variable \verb`n` has type \verb`Natural`, even though that is the only type that makes the expression typecheck: since the addition operator \verb`+` in Dhall is not overloaded, it can only take two arguments of type \verb`Natural`!
-However, because this information requires looking at context (the usage of \verb`n` as an argument to \verb`+`), it is not covered by the current rules of type inference in Dhall.
+\end{minted}
+In this example, the user has to specify that the variable \inHS`n` has type \inHS`Natural`, even though that is the only type that makes the expression typecheck: since the addition operator \inHS`+` in Dhall is not overloaded, it can only take two arguments of type \inHS`Natural`!
+However, because this information requires looking at context (the usage of \inHS`n` as an argument to \inHS`+`), it is not covered by the current rules of type inference in Dhall.
 
 This project will increase the flexibility of Dhall while still keeping the same philosophy of straightforward type inference rules.
 In particular this means adding universe and row polymorphism plus general type unification to the language.
-Universes are a technical detail of type theory: they are necessary to allow types to be first-class and they require bookkeeping to ensure the theory remains consistent, but of little interest from a programmer's perspective.
-Rows are certainly more interesting from a programmer's point of view: they allow coding to open interfaces, with data addressed by labels, but they have their own challenges in bookkeeping.
+Universes are a technical detail of type theory: they are what allow types to be first-class, however, to ensure the theory remains consistent, they require some bookkeeping which is of little interest from a programmer's perspective.
+Rows are certainly more interesting from a programmer's point of view: they allow coding to open interfaces of data addressed by labels, but they have their own challenges in bookkeeping.
 In fact, these concepts are already lurking in the existing rules for Dhall, and this project is allowing them to come into their own as concepts represented within the type theory in their own right.
 
 The third idea is the main motivation for this project: general type unification.
@@ -144,8 +194,8 @@ The ideas contained in this project should give clearer type errors than both bi
 Type theory studies programs (in the broadest sense) by giving types to expressions in a compositional manner.
 Type theories are set up as a system of formal judgments that give meaning to programs, considered as terms in some language.
 Terms are ascribed types in typing judgments, and then evaluation rules describe how terms reduce to other terms in order to run the program.
-The primary judgment has the form \verb`t : T` saying that term \verb`t` has type \verb`T`.
-Informally we might say that term \verb`t` ``lives in'' type \verb`T`.
+The primary judgment has the form \inHS`t : T` saying that term \inHS`t` has type \inHS`T`.
+Informally we might say that term \inHS`t` ``lives in'' type \inHS`T`.
 In may be thought of as analogous to $t \in T$ in the language of set theory, and indeed, older literature often uses this notation, even though types and sets are conceptually quite different.
 
 While the rules are formally laid out in a logical framework (the metalanguage), the rules often fit well into a computational framework.
@@ -171,11 +221,19 @@ The gold standard for research like this would be an implementation of the ideas
 However, this would too ambitious: computer-assisted proofs are notoriously exacting, frustrating, and difficult to produce: they are really computer-hindered proofs, if you will.
 So for this project, the scope is more modest and colloquial: an implementation in PureScript along with informal proofs in the language of common mathematics practice.
 
-PureScript is a functional programming language that is quite similar to Haskell, but with strict evaluation and compiling to JavaScript. Since PureScript is much newer than Haskell, it has the chance to revisit some of Haskell's design decisions. One of PureScript's innovations is the addition of row types. However, the row types discussed in this project differ significantly in implementation and scope from PureScript's, although the basic ideas are similar.
+PureScript is a functional programming language that is quite similar to Haskell, but with strict evaluation and compiling to JavaScript.
+Since PureScript is much newer than Haskell, it has the chance to revisit some of Haskell's design decisions.
+One of PureScript's innovations is the addition of row types.
+However, the row types discussed in this project differ significantly in implementation and scope from PureScript's, although the basic ideas are similar.
 
-PureScript is great for specifying executable code, but there's an impedance mismatch between PureScript and mathematical practice. PureScript, for the most part, has a concrete syntax for its datatypes, which is great for clarity of algorithms, but it lacks the ability to form subtypes, which complicates proofs of correctness. For example, from the type of lists in PureScript, one cannot formally construct a type of \emph{ordered} lists in PureScript. Instead, properties like this must be maintained as informal invariants of PureScript programs instead of being bundled into the datatypes and checked for type safety.
+PureScript is great for specifying executable code, but there's an impedance mismatch between PureScript and mathematical practice.
+PureScript, for the most part, has a concrete syntax for its datatypes, which is great for clarity of algorithms, but it lacks the ability to form subtypes, which complicates proofs of correctness.
+For example, from the type of lists in PureScript, one cannot formally construct a type of \emph{ordered} lists in PureScript.
+Instead, properties like this must be maintained as informal invariants of PureScript programs instead of being bundled into the datatypes and checked for type safety.
 
-On the other hand, set theory (the supposed language of mathematical practice) is great at forming subtypes (i.e. subsets), but is less clear with inductive types. In fact, many things that PureScript models with inductive types (such as the \verb`SemigroupMap` type of unordered associative lists, considered as monoids under keywise appending) are best denoted by very different object in set theory (like functions of finite support). Similarly, there is also differences of vocabulary between Dhall and PureScript, the same concept goes by different names, for example, \verb`Text` in Dhall is \verb`String` in PureScript.
+On the other hand, set theory (the supposed language of mathematical practice) is great at forming subtypes (i.e. subsets), but is less clear with inductive types.
+In fact, many things that PureScript models with inductive types (such as the \inHS`SemigroupMap` type of unordered associative lists, considered as monoids under keywise appending) are best denoted by very different object in set theory (like functions of finite support).
+Similarly, there is also differences of vocabulary between Dhall and PureScript, the same concept goes by different names, for example, \inHS`Text` in Dhall is \inHS`String` in PureScript.
 
 \chapter{Type Inference}
 \label{type-inf}
@@ -183,7 +241,7 @@ On the other hand, set theory (the supposed language of mathematical practice) i
 Type theory rules are typically written in horizontal bar style, writing assumptions above the line that are required to deduce the judgment below the line.
 
 Most judgments in type theory take place in a context, traditionally denoted $\Gamma$.
-This associates variables in scope with types, and sometimes values (for \verb`let`-bound variables).
+This associates variables in scope with types, and sometimes values (for \inHS`let`-bound variables).
 
 The main judgment is denoted $\Gamma \vdash t : T$ and reads ``term $t$ has type $T$ in context $\Gamma$''.
 
@@ -208,15 +266,15 @@ How do you study something in type theory?
 By giving it a type!
 Universes are a way to give types to types, and they would be uninteresting if not for some difficulties that arise in ensuring their consistency.
 
-The na\" ive way of doing it would be to say that all types live in a single universe, call it \verb`Type`.
-This universe is in fact a type, so it must be the case that \verb`Type : Type`.
-However, this ``\verb`Type`-in-\verb`Type`'' rule makes most type theories inconsistent, due to results such as Girard's paradox and its simplification as Hurkens' paradox.
-These are in some ways analogous to Cantor's paradox: just like there can be no set of all sets in a consistent set theory, there can be no type of all types in a consistent type theory.
+The na\" ive way of doing it would be to say that all types live in a single universe, call it \inHS`Type`.
+This universe is in fact a type, so it must be the case that \inHS`Type : Type`.
+However, this ``\inHS`Type`-in-\inHS`Type`'' rule makes most type theories inconsistent, due to results such as Girard's paradox and its simplification as Hurkens' paradox.
+These are in some ways analogous to Russell's paradox: just like there can be no set of all sets in a consistent set theory, there can be no type of all types in a consistent type theory.
 In type theory, the inconsistencies are visible as terms that can be ascribed types, but do not reduce to any normal form in a finite number of steps.
 
 The solution, therefore, is to stratify types into levels.
-Only \emph{small} types can live in \verb`Type` while \verb`Type` itself (and other ``large'' types) will live in \verb`Kind` and \verb`Kind` lives in \verb`Sort`, and so on.
-In fact it is customary to assume an infinite hierarchy of universes indexed by natural numbers, where \verb`Type = Universe 0` denotes the smallest, then \verb`Kind = Universe 1`, \verb`Sort = Universe 2`, and the rest are unnamed but exist as \verb`Universe 3`, \verb`Universe 4`, and so on.
+Only \emph{small} types can live in \inHS`Type` while \inHS`Type` itself (and other ``large'' types) will live in \inHS`Kind` and \inHS`Kind` lives in \inHS`Sort`, and so on.
+In fact it is customary to assume an infinite hierarchy of universes indexed by natural numbers, where \inHS`Type = Universe 0` denotes the smallest, then \inHS`Kind = Universe 1`,\enskip\inHS`Sort = Universe 2`, and the rest are unnamed but exist as \inHS`Universe 3`,\enskip\inHS`Universe 4`, and so on.
 
 However, these universe levels cannot be understood as natural numbers internal to the type theory.
 They must be accorded special status, because abstracting over them works differently to normal numbers and also because they should not support all operations that natural numbers do.
@@ -228,7 +286,7 @@ In fact, four operations suffice as we will see, plus a fifth to obtain a normal
 The actual algebraic language that expresses universe levels only has four operations: nullary zero, unary successor, and two binary operations maximum and impredicative-maximum.
 Thus this language only allows addition by fixed natural numbers: adding two universe levels together is not meaningful.
 
-There are actually three related languages under discussion here: $\mathcal{L}$, the language of universe levels with only maximum, not impredicative maximum; $\mathcal{L}_{\imax}$, extended with the impredicative maximum; and $\mathcal{L}_{\ifop}$, with an alternative binary operator that is used to simplify normal forms for impredicative maximum but does not appear directly in the typing judgments.
+There are actually three related languages under discussion here: $\mathcal{L}$, the language of universe levels with only maximum, no impredicative maximum; $\mathcal{L}_{\imax}$, extended with the impredicative maximum; and $\mathcal{L}_{\ifop}$, with an alternative binary operator that is used to simplify normal forms for impredicative maximum but does not appear directly in the typing judgments.
 
 Obviously we will use natural numbers to denote the appropriate sequence of successors and zero, and addition by a natural number represents the appropriate sequence of successors.
 
@@ -237,7 +295,7 @@ Obviously the ordinary maximum will be associative, commutative, idempotent, wit
 The impredicative maximum, however, is not associative or commutative, only idempotent, and so by convention it will be regarded as left-associative.
 That is, $(u, v; x, y)$ reads as $\imax(\max(u, v); \max(x, y))$ and $(u; v; w)$ as $\imax(\imax(u; v); w)$.
 
-We define $u \le v$ as $\max(u, v) = v$ as is standard.
+We define $u \le v$ by $\max(u, v) = v$ as is standard.
 
 Axioms:
 \label{alg-uni-laws}
@@ -290,7 +348,7 @@ A model is an assignment of variables to natural numbers.
 
 Constraints on universe levels will appear above the line, as with other assumptions.
 This is mainly to keep the type inference judgment clean, as they properly are treated as \emph{outputs} of type inference.
-During this model of type inference, instead of checking constraints immediately, they are instead accumulated in state (like a \verb`Writer` monad) and checked for satisfiability throughout the process but not necessarily discharged like normal assumptions.
+During this model of type inference, instead of checking constraints immediately, they are instead accumulated in state (like a \inHS`Writer` monad) and checked for satisfiability throughout the process but not necessarily discharged like normal assumptions.
 An error should occur as soon as inconsistent constraints occur, but type inference may still proceed.
 
 Here is how the universe level constraints come up during type inference:
@@ -316,16 +374,23 @@ A common additional rule is the universe cumulativity rule, which says that any 
 \begin{displaymath}
 \prftree{\Gamma \vdash T : \texttt{Universe}_u}{u \le v}{\Gamma \vdash T : \texttt{Universe}_v}
 \end{displaymath}
+\begin{displaymath}
+\prftree{u \le v}{\texttt{Universe}_u \subsumedBy \texttt{Universe}_v}
+\end{displaymath}
+\begin{displaymath}
+\prftree{A_2 \subsumedBy A_1}{B_1 \subsumedBy B_2}{\forall(x : A_1) \to B_1 \subsumedBy \forall(x : A_2) \to B_2}
+\end{displaymath}
 This rule is not implemented yet.
 As stated, it means that terms no longer have a unique type and requires coming up with fresh variables for universe levels.
 
 For now, the only place where constraints occur is during unification, and thus they are necessarily equality constraints.
 \begin{displaymath}
-\prftree{u \equiv v \mapsto w}{\Gamma \vdash \texttt{Universe}_u \equiv \texttt{Universe}_v \mapsto \texttt{Universe}_w}
+\prftree{u \equiv v \mapsto w}{\texttt{Universe}_u \equiv \texttt{Universe}_v \mapsto \texttt{Universe}_w}
 \end{displaymath}
+Because $u \equiv v$ emits as a side-condition, there's no specific expression that denotes $w$, so we just take $w = \max(u,v)$ as the most symmetric result, though there should be no difference returning either $u$ or $v$ instead.
 
 Besides cumulativity, the big challenge is polymorphism: letting the same definitions be instantiated at various universes.
-For built-in functions (e.g. \verb`Natural/fold`) this is easy enough to postulate in the type theory (again, it requires fresh variables for universe levels), but extending this to \verb`let`-bound user functions is more work, and function arguments even more so.
+For built-in functions (e.g. \inHS`Natural/fold`) this is easy enough to postulate in the type theory (again, it requires fresh variables for universe levels), but extending this to \inHS`let`-bound user functions is more work, and function arguments even more so (i.e. higher-order polymorphism).
 
 \section{Normal Form for Universe Levels}
 \label{nf-uni-lvl}
@@ -334,26 +399,49 @@ Proposed normal form. Formal presentation as a rewrite system to get to the norm
 
 First we introduce normal forms for the three-operation language without $\imax$, then we extend it to a normal form for the full language.
 
-The normal form for $\mathcal{L}$ is $\max(u_1 + k_1, \dots, u_n + k_n, c)$, where $c \ge k_1, \dots, k_n \ge 0$.
+\subsection{Normal Form Without Impredicative Maximum}
+
+The normal form for $\mathcal{L}$ is $\max(u_1 + k_1, \dots, u_n + k_n, c)$, where $c \ge k_1, \dots, k_n \ge 0$ and the $u_i$ occur in order.
 This is clearly closed under the operations in $\mathcal{L}$, since $\max$ is associative, commutative, and idempotent, and successor distributes across it.
 The PureScript datatype that represents the normal form is as follows:
-\begin{verbatim}
+\begin{minted}{haskell}
 data Tail = Tail (SemigroupMap String (Max Int)) (Max Int)
-\end{verbatim}
-With this setup, taking the maximum is clearly just semigroup append.
+\end{minted}
+With this setup, taking the maximum is clearly just the obvious semigroup append operation.
+
+There are some details to worry about here, though.
+The first is the use of integers instead of natural numbers:
+for one it is easier to work with in PureScript due to built-in support,
+and later, when subtracting constants from expressions based on their relationships,
+it will be convenient to temporarily allow negative integers to appear in constraints, although in the global picture nothing will actually be negative: no variables and no expressions.
+Certainly it will be the case that all the inputs are nonnegative integers, and this can be enforced syntactically when parsing programs.
+
+TODO: Will variables only appear in the context subtracted by an amount they are known to be greater than or equal to?
+
+And as was discussed in the introduction, there is no way in PureScript to enforce the restriction corresponding to $c \ge k_1, \dots, k_n$.
+This restriction comes from the fact that variables (and all expressions) are nonnegative.
+So instead, there is a normalization function that sets $c\prime = \max(c, k_1, \dots, k_n, 0)$.
+\begin{minted}{haskell}
+normalizeTail :: Tail -> Tail
+normalizeTail (Tail us u) = Tail us
+  (fold1 (NonEmpty u us) <> Max zero)
+\end{minted}
+Thus we see that an expression input as $\max(u+1, v+3)$ has a normal form of $\max(u+1, v+3, 3)$, just by applying the nonnegativity axiom, $\max(u+1, v+3) \ge v+3 \ge 3$.
+One nice property of this normalization is that appending two normalized expressions results in another normalized expression.
+
+\subsection{Normal Form With Impredicative Maximum}
 
 Instead of a normal form for $\mathcal{L}_{\imax}$ (which would require making somewhat arbitrary choices), expressions are written in the larger language $\mathcal{L}_{\ifop}$ which admits nice normal forms.
 One example of why this is crucial is $(c; b; a), (c; a; b) = ((c; b), b; a), a, ((c; a), a; b), b = (c; b; a), a, b = (c; a; b), a, b$.
 One of the two has to win in this case, but $\imax$ does not commute like that: only $\ifop$ does.
 
-
 In particular, $\mathcal{L}_{\ifop}$ has normal forms that are the maximum of cases with values from $\mathcal{L}$, satisfying some normality properties.
 Syntactically an expression in normal form looks like\\ $\max(\ifop(a_1; b_{1,1}; \dots; b_{1,m_1}); \dots; \ifop(a_n; b_{1,1}; \dots; b_{1,m_n}))$ where $a_i$ are normal forms for $\mathcal{L}$ and $b_{i,j}$ occur in sorted order, no duplicates.
 This is more clearly expressed in the PureScript type:
-\begin{verbatim}
+\begin{minted}{haskell}
 newtype Const = Universes (SemigroupMap (Set String) Tail)
-\end{verbatim}
-Again, the semigroup operation represents taking the maximum of two expressions.
+\end{minted}
+Again, the obvious semigroup operation represents taking the maximum of two expressions, though it may not quite be in normal form anymore.
 
 Mathematically, this should be seen as a monotonic function from hypotheticals (sets of variables) to the above $\mathcal{L}$ normal form, and indeed comparing any two normal forms of this type essentially requires computing that function on the union of hypotheticals from both.
 However, for the purposes of a finite normal form, it is better to store the minimal amount of information to recover the function.
@@ -362,8 +450,83 @@ So, along with the above conditions, there is the extra restriction that there i
 More on that later, but for example, $\max(\ifop(u; v), u + 1, v)$ is not a normal form: the $u$ in the hypothetical $\{v\}$ is redundant, since $u + 1$ already occurs at the hypothetical $\emptyset$.
 The correct normal form of that expression is simply $\max(u+1, v)$.
 
-A normal form $N$ in $\mathcal{L}_{\ifop}$ is in $\mathcal{L}_{\imax}$ exactly when whenever $\ifop(e; r_1; \dots; r_m)$ is in $N$, then it must be the case that for some sequence ordering of $r_1, \dots, r_n$, it is the case that $r_1 \le N$ and $\ifop(r_2; r_1) \le N$ and $\ifop(r_3; r_2; r_1) \le N, \dots, \ifop(b_m; \dots; b_1) \le N$, since that is simply $\imax(r_m; \dots; r_1) \le N$ by the translation of $\imax$ to $\ifop$.
-We will see that this property is maintained throughout.
+Again, this is a restriction that cannot be expressed in PureScript, but it lends itself to a normalization function:
+\begin{minted}{haskell}
+normalizeConst :: Const -> Const
+normalizeConst (Universes uz) =
+  Universes uz' # reduceBySelf
+    where
+      uz' = map normalizeTail uz
+      normalizeTail (Tail us u) = Tail us
+        (fold1 (NonEmpty u us) <> Max zero)
+\end{minted}
+Unlike \inHS`normalizeTail`, however, \inHS`normalizeConst` is not preserved by the na\"ive semigroup operation, since redundancy may be introduced with the expressions in combination that was not present individually.
+However, most of the library works fine with un-normalized expressions.
+
+A normal form $N$ in $\mathcal{L}_{\ifop}$ is in $\mathcal{L}_{\imax}$ exactly when for each $\ifop(e; r_1; \dots; r_m)$ occurring in $N$, there is some sequential ordering of $r_1, \dots, r_n$ such that $r_1 \le N$ and $\ifop(r_2; r_1) \le N$ and so on until $\ifop(r_3; r_2; r_1) \le N, \dots, \ifop(r_m; \dots; r_1) \le N$.
+This is simply the translation from $\mathcal{L}_{\imax}$ to $\mathcal{L}_{\ifop}$ of $\imax(e; r_m; \dots; r_1) \le N$.
+We will see that this property is maintained throughout, to ensure the normal form of $\mathcal{L}_{\imax}$ is indeed closed.
+
+\subsection{Implementing Impredicative Maximum Through If}
+This is the part that shows that the language is closed for $\mathcal{L}_{\ifop}$ and $\mathcal{L}_{\imax}$.
+
+First we set up two helper functions.
+Then we calculate the combination of variables that have to be zero for the constant to be zero.
+Then we apply that to the existing constant.
+
+\begin{minted}{haskell}
+zeroableTail :: Tail -> Boolean
+zeroableTail (Tail us (Max u)) =
+  u <= zero && all (\(Max v) -> v <= zero) us
+
+skimTail :: Tail -> Maybe (Set String)
+skimTail t@(Tail (SemigroupMap us) _) =
+  if zeroableTail t then Just (Map.keys us) else Nothing
+
+-- | The expression is only zero when combinations of variables are zero.
+peruse :: Const -> Set (Set String)
+peruse (Universes (SemigroupMap uz)) =
+  let
+    -- distr :: XNF -> YNF -> XNF
+    distr k1s k2s =
+      k2s # Set.map \k2 ->
+        Set.insert k2 k1s
+  in uz # foldMapWithIndex \k1 t ->
+    -- k1 is DNF
+    -- skimTail is CNF
+    -- we need CNF
+    case skimTail t of
+      Just k2 -> distr k2 k1
+      Nothing -> Set.singleton k1
+
+ifop :: Const -> Const -> Const
+ifop (Universes (SemigroupMap us)) v
+  = fromMaybe uempty $
+    peruse v # foldMap \ks ->
+      us # foldMapWithIndex \ks' u ->
+        Just $ Universes $ SemigroupMap $ Map.singleton (ks <> ks') u
+\end{minted}
+
+An expression is zero when:
+$\imax(a; b) = 0$ iff $b = 0$.
+$\ifop(a; b) = 0$ iff $b = 0$ or $a = 0$.
+$\max(a, b) = 0$ iff $a = 0$ and $b = 0$.
+$a+1$ never.
+$\imax(a; \imax(b; c)) = \imax(a; b; c) = (\ifop(a; b; c), \ifop(b; c), c)$
+
+
+
+%\subsection{Note on Zero}
+%Philosophical.
+%
+%Adding impredicativity to the language of universe levels produces an interesting change in the arithmetic.
+%Without impredicativity, the language $\mathcal{L}$ actually worked just as well over the integers as over the naturals, simply by dropping the nonnegativity axiom.
+%
+%However, with the addition of impredicativity, it appears that the special role of zero is cemented in place.
+%Not only because the definition of $\imax$ uses it, but also in the fact that the manipulation of expressions seems to suggest there be an identity.
+%Because it is a \inHS`SemigroupMap` of hypotheses, and there is no sense in requiring it to be nonempty.
+
+
 \section{Relating Universe Levels}
 \label{rel-uni-lvl}
 
@@ -377,7 +540,7 @@ The third and final relation is that one is always less than or equal to the oth
 These three relations can be wrapped up into a single semigroup that describes how two level expressions are related.
 The difference between the last two relations, then, is how they combine: the former is infectious, in that it takes priority over the strict inequality, while the latter is subsumed by it.
 
-\begin{verbatim}
+\begin{minted}{haskell}
 data Rel
   -- equal (and arbitrarily large)
   = EEQ
@@ -389,11 +552,11 @@ data Rel
   | LLE | LGE
   -- uncomparable
   | RUN
-\end{verbatim}
+\end{minted}
 
 This has a commutative, idempotent semigroup structure.
 A selection of key cases are shown below:
-\begin{verbatim}
+\begin{minted}{haskell}
 instance semigroupRel :: Semigroup Rel where
   append RUN _ = RUN
 
@@ -405,25 +568,25 @@ instance semigroupRel :: Semigroup Rel where
 
   append ALT HLE = HLE
   append ALT LLE = ALT
-\end{verbatim}
+\end{minted}
 
 To get a monoid out of this, we just adjoin an identity.
-The functor in PureScript that canonically does this is \verb`Maybe`, which has two constructors: \verb`Nothing :: forall a. Maybe a` and \verb`Just :: forall a. a -> Maybe a`.
-Of course the monoid \verb`Maybe Rel` is still commutative and idempotent.
+The functor in PureScript that canonically does this is \inHS`Maybe`, which has two constructors: \inHS`Nothing :: forall a. Maybe a` and \inHS`Just :: forall a. a -> Maybe a`.
+Of course the monoid \inHS`Maybe Rel` is still commutative and idempotent.
 
 In fact, a commutative, idempotent semigroup is a semilattice.
 Adjoining the identity for the semigroup operation is the same as adjoining a bottom element for the semilattice, producing a bounded semilattice.
-These are the Hasse diagrams for \verb`Rel` and \verb`Maybe Rel`.
+These are the Hasse diagrams for \inHS`Rel` and \inHS`Maybe Rel`.
 
 \hfill\begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
-    \node (RUN) at (0,2.5) {\verb`RUN`};
-    \node (HLE) at (1,2)  {\verb`HLE`};
-    \node (HGE) at (-1,2) {\verb`HGE`};
-    \node (ALT) at (1,1.0)  {\verb`ALT`};
-    \node (EEQ) at (0,1.5) {\verb`EEQ`};
-    \node (AGT) at (-1,1.0) {\verb`AGT`};
-    \node (LLE) at (1,0.5)  {\verb`LLE`};
-    \node (LGE) at (-1,0.5) {\verb`LGE`};
+    \node (RUN) at (0,2.5) {\inHS`RUN`};
+    \node (HLE) at (1,2)  {\inHS`HLE`};
+    \node (HGE) at (-1,2) {\inHS`HGE`};
+    \node (ALT) at (1,1.0)  {\inHS`ALT`};
+    \node (EEQ) at (0,1.5) {\inHS`EEQ`};
+    \node (AGT) at (-1,1.0) {\inHS`AGT`};
+    \node (LLE) at (1,0.5)  {\inHS`LLE`};
+    \node (LGE) at (-1,0.5) {\inHS`LGE`};
 
     \draw [thick] (RUN) -- (HLE);
     \draw [thick] (RUN) -- (HGE);
@@ -435,15 +598,15 @@ These are the Hasse diagrams for \verb`Rel` and \verb`Maybe Rel`.
     \draw [thick] (AGT) -- (LGE);
 \end{tikzpicture}\hfill\hfill
 \begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
-    \node (RUN) at (0,2.5) {\verb`Just RUN`};
-    \node (HLE) at (1,2)  {\verb`Just HLE`};
-    \node (HGE) at (-1,2) {\verb`Just HGE`};
-    \node (ALT) at (1,1.0)  {\verb`Just ALT`};
-    \node (EEQ) at (0,1.5) {\verb`Just EEQ`};
-    \node (AGT) at (-1,1.0) {\verb`Just AGT`};
-    \node (LLE) at (1,0.5)  {\verb`Just LLE`};
-    \node (LGE) at (-1,0.5) {\verb`Just LGE`};
-    \node (bot) at (0,0) {\verb`Nothing`};
+    \node (RUN) at (0,2.5) {\inHS`Just RUN`};
+    \node (HLE) at (1,2)  {\inHS`Just HLE`};
+    \node (HGE) at (-1,2) {\inHS`Just HGE`};
+    \node (ALT) at (1,1.0)  {\inHS`Just ALT`};
+    \node (EEQ) at (0,1.5) {\inHS`Just EEQ`};
+    \node (AGT) at (-1,1.0) {\inHS`Just AGT`};
+    \node (LLE) at (1,0.5)  {\inHS`Just LLE`};
+    \node (LGE) at (-1,0.5) {\inHS`Just LGE`};
+    \node (bot) at (0,0) {\inHS`Nothing`};
 
     \draw [thick] (RUN) -- (HLE);
     \draw [thick] (RUN) -- (HGE);
@@ -462,9 +625,35 @@ These are the Hasse diagrams for \verb`Rel` and \verb`Maybe Rel`.
 % max(4,u) LLE max(4,u+1)
 % max(4,u) LLE max(6,u)
 
-For the $\mathcal{L}$ normal form \verb`Tail`, the expressions are compared variablewise and these results are combined together with the semigroup operation.
+For the $\mathcal{L}$ normal form \inHS`Tail`, the expressions are compared variablewise and these results are combined together with the semigroup operation.
 
-For the $\mathcal{L}_{\ifop}$ normal form \verb`Const`, the expressions are compared for each relevant hypothetical and combined with the monoid operation.
+For the $\mathcal{L}_{\ifop}$ normal form \inHS`Const`, the expressions are compared for each relevant hypothetical and combined with the monoid operation.
+
+\subsection{Proofs}
+There is something weird happening here: comparing variable-wise is the only way to get the right answer, it certainly works, but doesn't fit into as nice of a framework.
+In particular, we cannot prove that $x RUN y$ and $a RUN b$ implies $\max(x,a) RUN \max(y,b)$ because maybe the correct thing to do was to compare $x$ with $b$ and $a$ with $y$.
+It's like we need to make a good-will best-effort attempt to extract information.
+Is it the minimum of all possible comparisons?
+Or just the non-uncomparable?
+Idk.
+Anyways.
+
+Let $x, y, a, b$ be universe expressions.
+Clearly if $x \le y$ and $a \le b$ then $\max(x,a) \le \max(y,b)$, since $\max(\max(x,a),\max(y,b)) = \max(\max(x,y),\max(a,b)) = \max(y,b)$.
+Similarly if $x < y$ and $a < b$ then $\max(x,a) < \max(y,b)$.
+This justifies \inHS`ALT <> ALT = ALT`.
+
+Compare $\max(v+k, e_1)$ and $\max(v+k, e_2)$, where $v$ does not occur in $e_1$ or $e_2$: add \inHS`EEQ` to comparing $e_1$ and $e_2$.
+Compare $\max(v+k, e_1)$ and $\max(v+k+m+1, e_2)$  where $v$ does not occur in $e_1$ or $e_2$: add \inHS`ALT` to comparing $e_1$ and $e_2$.
+
+
+The idea is that by comparing variable against variable, we don't run into conflicts in the models we want to produce.
+If we have $u = u$, then the models we want to produce to obtain arbitrarily large equalities hold after considering $\max(u, e_1) = \max(u, e_2)$.
+This is because we can always consider $u$ to be larger that $\max(e_1, e_2)$ -- as long as $e_1$ and $e_2$ do not mention $u$.
+More exactly: to construct a model where $\max(u, e_1) = \max(u, e_2)$ we set all the other variables to $0$ and then take $u = \max(e_1, e_2)$, where $e_1$ and $e_2$ can now be evaluated in the model with all the other variables being $0$.
+
+NOTE: normalization helps, but is an orthogonal concern, merely enforcing that $u \ge 0$ for all variables/expressions.
+
 
 \section{Solving Universe Levels}
 \label{solv-uni-lvl}
@@ -472,11 +661,12 @@ For the $\mathcal{L}_{\ifop}$ normal form \verb`Const`, the expressions are comp
 As type inference progresses, more constraints are added to universe levels that need to be checked for consistency.
 The actual state that is kept is a map from level expressions to level expressions, where each key-value pair represents the constraint that the key is \emph{greater than} the value.
 
-\begin{verbatim}
+\begin{minted}{haskell}
 newtype GESolver = GESolver (Map Const Const)
-\end{verbatim}
+\end{minted}
 
-The reason for this choice is that the conjuction of $u \ge v$ with $u \ge w$ is $u \ge \max(v, w)$. So having a single level expression for each upper bound suffices.
+The reason for this choice is that the conjuction of $u \ge v$ with $u \ge w$ is $u \ge \max(v, w)$.
+So having a single level expression for each upper bound suffices.
 
 The primary aspect of solving is just saturating all of the known relations between expressions, starting with reflexivity.
 For example, if $u \ge v$ is a constraint and $v \ge w$ is also a constraint, then $u \ge w$ is a constraint, by transitivity.
@@ -495,22 +685,286 @@ For example, if $\imax(u; v) > 0$ then $\imax(u; v) \ge \max(u, v)$, but recall 
 As a more complicated situation with two variables, $\max(\imax(l; a), \imax(r; b)) > 0$ implies that $\max(a, b) > 0$ so $\max(\imax(l; a), \imax(r; b)) \ge \min(l, r)$, it would be weird to have to add a minimum operator, and again, it is not so obvious to see how this applies in the $\mathcal{L}_{\ifop}$ normal form in full generality and whether it does influence satisfiability.
 
 However, by brute-force case analysis, it is possible to decide $\mathcal{L}_{\imax}$ in at worst exponential time over the plain $\mathcal{L}$ algorithm.
+So that is what we do.
+This involves looking for constraints of $v+k \ge k+1$ (forcing $v$ to be positive) or $k \ge v+k$ (forcing $v$ to be zero) in the context.
+
+\begin{minted}{haskell}
+data Known = Bounds { lower :: Max Int, upper :: Maybe (Min Int) }
+\end{minted}
+
+
+
+
+
+
+
+\chapter{Row Types}
+Typechecking records and unions is one of the most complex parts of the Dhall standard already.
+Dhall mitigates some of this complexity by requiring that all records and unions have statically known shapes.
+Nevertheless, hiding behind the scenes are the shadows of a concept called row types that capture the shared shapes of records and unions.
+
+Row types consist of an unordered set of labels associated with types.
+``Open'' rows have some known labels at the ``head'' along with a ``tail'' row of unknown fields.
+There may also be some labels that are known to \emph{be absent} from the tail of the row.
+``Closed'' rows are completely known, with an empty tail.
+
+For simple constraints on rows, open rows over row variables are sufficient to express them.
+For example, getting a single field from an open record is trivial with open rows.
+
+However, merging two open rows cannot be solved in the language of open rows.
+To allow more complex programs to be polymorphic over these shapes, we need to introduce a system of constraints similar to the case of universe polymorphism.
+
+In order for information to flow backwards, instead of introducing functions on row types, we introduce constraint relations that track inputs and outputs equally.
+Of course, the primary mode of learning information is learning about presence and absence of labels.
+
+Since row types contain other types, this requires some machinery on types (namely unification and apartness); see the next chapter for that.
+In particular, apartness will direct the path of solving, while unification constraints are part of the resultant data generated by solving.
+
+Unlike universe constraints, which do not necessarily “solve” for universe level variables, row constraints are best expressed by solving for variables and filling in information partially.
+One challenge is the fact that information comes in in a quasi-ordered fashion, while rows have to conceptually be completely unordered.
+
+TODO: How to disallow duplicate labels?
+Just show it never introduces duplicate labels?
+
+TODO: Generate the ``backwards'' rules from the forwards?
+
+We write $\{\ \dots\!r\ \}$ for the record type with fields specified by the record row $(\ \dots\!r\ )$.
+A record row $(\ l : t,\ \dots\!r\ )$ contains type $t$ at a known label $l$ in the head, and $r$ as the tail.
+
+We write $\langle\ \dots\!\mathit{rm}\ \rangle$ for the union type with fields specified by the union row $(\ \dots\!\mathit{rm}\ )$.
+A union row $(\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ )$ contains an optional type $\mathit{mt}$ at a known label $l$ in the head, and $r$ as the tail.
+That is, $(\ l,\ \dots\!r\ )$ denotes the union row with a label $l$ but no type associated to that label, and $(\ l : t,\ \dots\!r\ )$ associates to it a type as usual.
+
+We write $r \setminus l$ to denote the row $r$ with label $l$ removed.
+
+First we describe the constraint $r_1 \land r_2 = r_3$ for typing the recursive record merge operator:
+\begin{displaymath}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \land r_2 = r_3}{a \land b : \{\ \dots\!r_3\ \}}
+\end{displaymath}
+
+Learning that the label is \emph{not} in the output tells us that the label is in neither of the inputs, and vice-versa:
+\begin{displaymath}
+\prftree{r_1 = (r_1 \setminus l)}{r_2 = (r_2 \setminus l)}{r_1 \land r_2 = (r_3 \setminus l)}
+\qquad
+\prftree{r_3 = (r_3 \setminus l)}{(r_1 \setminus l) \land (r_2 \setminus l) = r_3}
+\end{displaymath}
+
+Learning the label is in the left or right side tells us that the label is in the output, but the constraint is stuck because the types cannot be related yet:
+\begin{displaymath}
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {(\ l : t_1,\ \dots\!r_1\ ) \land r_2 = r_3}
+\qquad
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {r_1 \land (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+\end{displaymath}
+
+Learning the label is in the left or right side and absent from the other does make progress:
+\begin{displaymath}
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {t_1 = t_3}
+  {r_1 \land r_2 = (r_3 \setminus l)}
+  {(\ l : t_1,\ \dots\!r_1\ ) \land (r_2 \setminus l) = r_3}
+\quad
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {t_2 = t_3}
+  {r_1 \land r_2 = (r_3 \setminus l)}
+  {(r_1 \setminus l) \land (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+\end{displaymath}
+
+Finally, learning the label is in both sides triggers the recursive case:
+\begin{displaymath}
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {t_1 = \{\ \dots\!r\prime_1\ \}}
+  {t_2 = \{\ \dots\!r\prime_2\ \}}  
+  {t_3 = \{\ \dots\!r\prime_3\ \}}
+  {r\prime_1 \land r\prime_2 = r\prime_3}
+  {r_1 \land r_2 = (r_3 \setminus l)}
+  {(\ l : t_1,\ \dots\!r_1\ ) \land (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+\end{displaymath}
+
+
+
+Next we describe the constraint $r_1 \mathop{/\!/} r_2 = r_3$ for typing the right-biased record merge operator:
+\begin{displaymath}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \mathop{/\!/} r_2 = r_3}{a \mathop{/\!/} b : \{\ \dots\!r_3\ \}}
+\end{displaymath}
+
+Again, the label is absent from the output if and only if it is absent from both inputs:
+\begin{displaymath}
+\prftree{r_1 = (r_1 \setminus l)}{r_2 = (r_2 \setminus l)}{r_1 \mathop{/\!/} r_2 = (r_3 \setminus l)}
+\qquad
+\prftree{r_3 = (r_3 \setminus l)}{(r_1 \setminus l)\ \mathop{/\!/}\ (r_2 \setminus l) = r_3}
+\end{displaymath}
+
+On the left side it gets stuck until it is known to be absent from the right:
+\begin{displaymath}
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {(\ l : t_1,\ \dots\!r_1\ )\ \mathop{/\!/} r_2 = r_3}
+\qquad
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {t_1 = t_3}
+  {r_1 \mathop{/\!/} r_2 = (r_3 \setminus l)}
+  {(\ l : t_1,\ \dots\!r_1\ )\ \mathop{/\!/}\ (r_2 \setminus l) = r_3}
+\end{displaymath}
+
+But it always makes progress on the right side:
+\begin{displaymath}
+\qquad
+\prftree
+  {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
+  {t_2 = t_3}
+  {r_1 \mathop{/\!/} r_2 = (r_3 \setminus l)}
+  {r_1 \mathop{/\!/}\ (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+\end{displaymath}
+
+Finally we describe the constraint $a \mathop{\$} b \to t_3$ for typing the record--union merge expression:
+\begin{displaymath}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \langle\ \dots\!\mathit{rm}_2\ \rangle}{a \mathop{\$} b \to t_3}{\texttt{merge}\ a\ b : t_3}
+\end{displaymath}
+
+Both rows must have the same labels, but it gets partially stuck if it is not know whether the union type has data at a label:
+\begin{displaymath}
+\prftree{\mathit{rm}_2 = (\ l \mathop{{:}{?}} \mathit{mt}_2,\ \dots\!(\mathit{rm}_2 \setminus l)\ )}{(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$} \mathit{rm}_2 \to t_3}
+\qquad
+\prftree{r_1 = (\ l : t_1,\ \dots\!(r_1 \setminus l)}{r_1 \mathop{\$}\ (\ l \mathop{{:}{?}} \mathit{mt}_2,\ \dots\!\mathit{rm}_2\ ) \to t3}
+\end{displaymath}
+
+Knowing that makes progress:
+\begin{displaymath}
+\prftree{t_1 = t_3}{r_1 \mathop{\$} \mathit{rm}_2 \to t_3}
+  {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ (\ l,\ \dots\!\mathit{rm}_2\ ) \to t_3}
+\qquad
+% TODO: shifting, etc.
+\prftree{t_1 = t_2 \to t_3}{r_1 \mathop{\$} \mathit{rm}_2 \to t_3}
+  {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ (\ l : t_2,\ \dots\!\mathit{rm}_2\ ) \to t_3}
+\end{displaymath}
+
+\begin{verbatim}
+apartness rules:
+
+t1 /= t3
+mt2 = some t2
+( l : t1, ...r1 ) $ (l : t2, ...rm2 ) -> t3
+______________________________________________
+( l : t1, ...r1 ) $ ( l :? mt2, ...rm2 ) -> t3
+
+t1 /= forall (l : t2) -> t5
+mt2 = none
+( l : t1, ...r1 ) $ ( l, ...rm2 ) -> t3
+______________________________________________
+( l : t1, ...r1 ) $ ( l :? mt2, ...rm2 ) -> t3
+\end{verbatim}
+
+
+% CCombine r1 r2 r3: r1 /\ r2 = r3
+% Learn left has label l
+% CCombineL l t1 r1 r2 t3 r3: ( l : t1, ...r1 ) /\ r2 = ( l : t3, ...r3 )
+% Learn right has label l
+% CCombineR l r1 t2 r2 t3 r3: r1 /\ ( l : t1, ...r2) = ( l : t3, ...r3 )
+% If both have label, then it must be records on both sides and recurse
+%
+% CPrefer r1 r2 r3: r1 // r2 = r3
+% Learn right has label l
+% CPreferR l r1 t2 r2 t3 r3: r1 // ( l : t2, ...r2 ) = ( l : t3, ...r3 )
+%
+% CHomogeneous r t
+%
+% CMerge r1 rm2 t3: r1 $ rm2 -> t3
+% Learn there is a label l (in both)
+% CMergeL l t1 r1 mt2 rm2 t3: ( l : t1, ...r1 ) $ ( l :? mt2, ...rm2) -> t3
+% Learning whether the label is filled tells us enough to reduce to unification
+%
+
+Since the type problem is undecidable (and computationally expensive), the row type problem is no better.
+However, it might still be possible to make an algorithm for the row type problem that is complete with respect to an oracle for the type problem or to restrict types to a decidable subset (say, one base type like \inHS`Text`, function types, and record types).
+
+\begin{displaymath}
+\end{displaymath}
+
+
+
+
+
+
+\chapter{Unification}
+Unification, subsumption, and apartness relations.
+
+Unification and subsumption are reflexive and transitive.
+Unification and apartness are symmetric.
+
+NOTE: Check subsumption only happens for types.
+
+Unification and subsumption are the same judgment, just parameterized over a relationship ($(=)$ for unification, $(\le)$ or $(\ge)$ for subsumption) which is only used as the constraint for comparing universe levels right now.
+This means that it does not handle row expansion or contraction -- but hopefully row polymorphism is sufficient for that.
+
+Maybe apartness should be called disunifiability, since it does not serve the same purpose as it does in PureScript/Haskell.
+Namely, it will consider distinct (lambda-)bound variables apart, because they could never be unified, though they could be instantiated to the same.
+
+We use metavariables for unification, to represent types that used to be required but can now be ommitted.
+Technically they can also represent non-types, but unification is much less useful for non-types because computations are not necessarily injective or generative, unlike type constructors.
+
+Metavariables can of course be unified with anything (as long as scope matches up?), and so will be apart from nothing.
+
+\section{Unification and Subsumption}
+Unification is essentially a command to the typechecker to do what it needs to make two types be the same.
+In particular, this will involve increasing known information about metavariables and adding constraints (both universe and row constraints) to the context.
+
+C.f. judgmental equality is a judgment not a proposition.
+
+As mentioned above, unification and subsumption are the same judgment.
+
+
+
+\section{Apartness}
+Apartness tests whether two expressions could ever be unified.
+
+Obviously distinct literals and distinct type constructors will be considered apart (e.g. a record type and a union type can never unify, no matter what their rows are; additionally two record types with distinct labels can never unify).
+As mentioned above, distinct (lambda/forall-)bound variables will also be considered apart, so maybe this is a disunifiability relation, and metavariables will never be considered apart.
+
+Computation rules?
+Controversial, because they do not compose:
+
+\begin{displaymath}
+\prftree{\inHS`l_1 /= l_2`}{\inHS`l_1 /= r_2`}{\inHS`r_1 /= l_2`}{\inHS`r_1 /= r_2`}{\inHS`if b_1 then l_1 else r_1 /= if b_2 then l_2 else r_2`}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\inHS`l_1 /= l_2`}{\inHS`r_1 /= r_2`}{\inHS`if b then l_1 else r_1 /= if b then l_2 else r_2`}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\inHS`z /= r`}{\inHS`s _ /= r`}{\inHS`Natural/fold n z s /= r`}
+\end{displaymath}
+
+
+
+
+
+\chapter{Putting Everything Together}
+Coming back to surface syntax, it seems like universe polymorphism and row polymorphism can both be implicit.
+
+The tricky part will be whether this can work for function variables (which are arbitrary unknowns) as opposed to let variables: can higher-order universe/row polymorphism be inferred?
+
+Each usage of a polymorphic variable will have its polymorphic variables instantiated with fresh metavars, propagating the constraints.
+
+Types can be syntactically omitted where they were previously required.
+Also replaced with a metavariable syntax in other positions.
+(TODO: characterize when inference is perfect.)
+
+%\chapter{Conclusion}
 
 \iffalse
 \begin{appdices}
-
-\chapter{I Like Appendices}
-
-\section{A Lovely Appendix}
-
 \end{appdices}
 
 
 \begin{bibliog}
-
 \end{bibliog}
 \fi
 
 \end{document}
-
-% end of file bardproj_template.tex
