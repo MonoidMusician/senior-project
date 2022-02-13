@@ -212,7 +212,7 @@ Type theories are set up as a system of formal judgments that give meaning to pr
 Terms are ascribed types in typing judgments, and then evaluation rules describe how terms reduce to other terms in order to run the program.
 The primary judgment has the form \inHS`t : T` saying that term \inHS`t` has type \inHS`T`.
 Informally we might say that term \inHS`t` ``lives in'' type \inHS`T`.
-In may be thought of as analogous to $t \in T$ in the language of set theory, and indeed, older literature often uses this notation, even though types and sets are conceptually quite different.
+In may be thought of as analogous to \(t \in T\) in the language of set theory, and indeed, older literature often uses this notation, even though types and sets are conceptually quite different.
 
 While the rules are formally laid out in a logical framework (the metalanguage), the rules often fit well into a computational framework.
 The process of checking whether a term has a particular type is called type checking.
@@ -256,12 +256,12 @@ Similarly, there is also differences of vocabulary between Dhall and PureScript,
 
 Type theory rules are typically written in horizontal bar style, writing assumptions above the line that are required to deduce the judgment below the line.
 
-Most judgments in type theory take place in a context, traditionally denoted $\Gamma$.
+Most judgments in type theory take place in a context, traditionally denoted \(\Gamma\).
 This associates variables in scope with types, and sometimes values (for \inHS`let`-bound variables).
 
-The main judgment is denoted $\Gamma \vdash t : T$ and reads ``term $t$ has type $T$ in context $\Gamma$''.
+The main judgment is denoted \(\Gamma \vdash t : T\) and reads ``term \(t\) has type \(T\) in context \(\Gamma\)''.
 
-In terms of computational interpretation, $\Gamma$ and $t$ are inputs to a function, and the result is the inferred type $T$ or an error if no proof tree could be constructed for it.
+In terms of computational interpretation, \(\Gamma\) and \(t\) are inputs to a function, and the result is the inferred type \(T\) or an error if no proof tree could be constructed for it.
 
 Type inference usually satisfies particular nice properties.
 For example, if a piece of syntax typechecks in an environment, every sub-piece of syntax also typechecks in the corresponding environment.
@@ -273,7 +273,7 @@ The goal of this project is to show how these side-conditions can instead be def
 Now type inference will produce constraints that need to be checked for consistency.
 In particular, the universe levels produce arithmetical constraints that are essential to ensuring termination of evaluation of programs.
 
-The unification judgment will be written $A \equiv B \mapsto C$ for the unification of $A$ and $B$ resulting in a new unified term $C$ (along with constraints to make them unify), and computationally this is a part of typechecking.
+The unification judgment will be written \(A \equiv B \mapsto C\) for the unification of \(A\) and \(B\) resulting in a new unified term \(C\) (along with constraints to make them unify), and computationally this is a part of typechecking.
 
 \chapter{Universes}
 \label{universes}
@@ -302,59 +302,59 @@ In fact, four operations suffice as we will see, plus a fifth to obtain a normal
 The actual algebraic language that expresses universe levels only has four operations: nullary zero, unary successor, and two binary operations maximum and impredicative-maximum.
 Thus this language only allows addition by fixed natural numbers: adding two universe levels together is not meaningful.
 
-There are actually three related languages under discussion here: $\mathcal{L}$, the language of universe levels with only maximum, no impredicative maximum; $\mathcal{L}_{\imax}$, extended with the impredicative maximum; and $\mathcal{L}_{\ifop}$, with an alternative binary operator that is used to simplify normal forms for impredicative maximum but does not appear directly in the typing judgments.
+There are actually three related languages under discussion here: \(\mathcal{L}\), the language of universe levels with only maximum, no impredicative maximum; \(\mathcal{L}_{\imax}\), extended with the impredicative maximum; and \(\mathcal{L}_{\ifop}\), with an alternative binary operator that is used to simplify normal forms for impredicative maximum but does not appear directly in the typing judgments.
 
 Obviously we will use natural numbers to denote the appropriate sequence of successors and zero, and addition by a natural number represents the appropriate sequence of successors.
 
-For clarity, we will sometimes denote maximum of $u$ and $v$ by $\max(u, v)$ and their impredicative-maximum by $\imax(u; v)$, but often we will leave the function labels off and treat the comma and semicolon as binary operators, with the comma having higher precedence.
-Obviously the ordinary maximum will be associative, commutative, idempotent, with identity $0$, so there is no disambiguation required.
+For clarity, we will sometimes denote maximum of \(u\) and \(v\) by \(\max(u, v)\) and their impredicative-maximum by \(\imax(u; v)\), but often we will leave the function labels off and treat the comma and semicolon as binary operators, with the comma having higher precedence.
+Obviously the ordinary maximum will be associative, commutative, idempotent, with identity \(0\), so there is no disambiguation required.
 The impredicative maximum, however, is not associative or commutative, only idempotent, and so by convention it will be regarded as left-associative.
-That is, $(u, v; x, y)$ reads as $\imax(\max(u, v); \max(x, y))$ and $(u; v; w)$ as $\imax(\imax(u; v); w)$.
+That is, \((u, v; x, y)\) reads as \(\imax(\max(u, v); \max(x, y))\) and \((u; v; w)\) as \(\imax(\imax(u; v); w)\).
 
-We define $u \le v$ by $\max(u, v) = v$ as is standard.
+We define \(u \le v\) by \(\max(u, v) = v\) as is standard.
 
 Axioms:
 \label{alg-uni-laws}
 \begin{enumerate}
 \item Successor is injective:\\
-  $u = v \iff u+1 = v+1$
+  \(u = v \iff u+1 = v+1\)
 \item Maximum is commutative:\\
-  $\max(u, v) = \max(v, u)$
+  \(\max(u, v) = \max(v, u)\)
 \item Maximum is associative:\\
-  $\max(u, \max(v, w)) = \max(\max(u, v), w)$
+  \(\max(u, \max(v, w)) = \max(\max(u, v), w)\)
 \item Maximum is idempotent:\\
-  $\max(u, u) = u$
+  \(\max(u, u) = u\)
 \item Zero is least:\\
-  $\max(0, u) = u$
+  \(\max(0, u) = u\)
 \item Successor distributes across maximum:\\
-  $\max(u, v) + 1 = \max(u + 1, v + 1)$
-\item For $\mathcal{L}_{\imax}$:
+  \(\max(u, v) + 1 = \max(u + 1, v + 1)\)
+\item For \(\mathcal{L}_{\imax}\):
 \begin{enumerate}
 \item Impredicative maximum:\\
-  $\imax(u; 0) = 0$
+  \(\imax(u; 0) = 0\)
 \item Non-impredicative maximum:\\
-  $0 < v \implies \imax(u; v) = \max(u, v)$
+  \(0 < v \implies \imax(u; v) = \max(u, v)\)
 \end{enumerate}
-\item For $\mathcal{L}_{\ifop}$:
+\item For \(\mathcal{L}_{\ifop}\):
 \begin{enumerate}
 \item If zero:\\
-  $\ifop(u; 0) = 0$
+  \(\ifop(u; 0) = 0\)
 \item If nonzero:\\
-  $0 < v \implies \ifop(u; v) = u$
+  \(0 < v \implies \ifop(u; v) = u\)
 \item Definition of impredicative maximum in terms of if:\\
-  $\imax(u; v) = \max(\ifop(u; v), v)$
+  \(\imax(u; v) = \max(\ifop(u; v), v)\)
 \end{enumerate}
 \end{enumerate}
 
 Deductions:
 \label{alg-uni-laws-more}
 \begin{enumerate}
-\item $0 \le u$
-\item $u \le \max(u, v)$
-\item $u \le v \iff u+1 \le v+1$
-\item $\imax(u; \max(v, w)) = \max(\imax(u; v), \imax(u; w))$
-\item $\max(\imax(u; v), \imax(u; w)) = \imax(\max(u, v); w)$
-\item $\imax(u, \imax(v, w)) = \imax(\max(u, v); w)$
+\item \(0 \le u\)
+\item \(u \le \max(u, v)\)
+\item \(u \le v \iff u+1 \le v+1\)
+\item \(\imax(u; \max(v, w)) = \max(\imax(u; v), \imax(u; w))\)
+\item \(\max(\imax(u; v), \imax(u; w)) = \imax(\max(u, v); w)\)
+\item \(\imax(u, \imax(v, w)) = \imax(\max(u, v); w)\)
 \end{enumerate}
 
 A model is an assignment of variables to natural numbers.
@@ -403,7 +403,7 @@ For now, the only place where constraints occur is during unification, and thus 
 \begin{displaymath}
 \prftree{u \equiv v \mapsto w}{\texttt{Universe}_u \equiv \texttt{Universe}_v \mapsto \texttt{Universe}_w}
 \end{displaymath}
-Because $u \equiv v$ emits as a side-condition, there's no specific expression that denotes $w$, so we just take $w = \max(u,v)$ as the most symmetric result, though there should be no difference returning either $u$ or $v$ instead.
+Because \(u \equiv v\) emits as a side-condition, there's no specific expression that denotes \(w\), so we just take \(w = \max(u,v)\) as the most symmetric result, though there should be no difference returning either \(u\) or \(v\) instead.
 
 Besides cumulativity, the big challenge is polymorphism: letting the same definitions be instantiated at various universes.
 For built-in functions (e.g. \inHS`Natural/fold`) this is easy enough to postulate in the type theory (again, it requires fresh variables for universe levels), but extending this to \inHS`let`-bound user functions is more work, and function arguments even more so (i.e. higher-order polymorphism).
@@ -413,12 +413,12 @@ For built-in functions (e.g. \inHS`Natural/fold`) this is easy enough to postula
 
 Proposed normal form. Formal presentation as a rewrite system to get to the normal form.
 
-First we introduce normal forms for the three-operation language without $\imax$, then we extend it to a normal form for the full language.
+First we introduce normal forms for the three-operation language without \(\imax\), then we extend it to a normal form for the full language.
 
 \subsection{Normal Form Without Impredicative Maximum}
 
-The normal form for $\mathcal{L}$ is $\max(u_1 + k_1, \dots, u_n + k_n, c)$, where $c \ge k_1, \dots, k_n \ge 0$ and the $u_i$ occur in order.
-This is clearly closed under the operations in $\mathcal{L}$, since $\max$ is associative, commutative, and idempotent, and successor distributes across it.
+The normal form for \(\mathcal{L}\) is \(\max(u_1 + k_1, \dots, u_n + k_n, c)\), where \(c \ge k_1, \dots, k_n \ge 0\) and the \(u_i\) occur in order.
+This is clearly closed under the operations in \(\mathcal{L}\), since \(\max\) is associative, commutative, and idempotent, and successor distributes across it.
 The PureScript datatype that represents the normal form is as follows:
 \begin{minted}{haskell}
 data Tail = Tail (SemigroupMap String (Max Int)) (Max Int)
@@ -434,37 +434,37 @@ Certainly it will be the case that all the inputs are nonnegative integers, and 
 
 TODO: Will variables only appear in the context subtracted by an amount they are known to be greater than or equal to?
 
-And as was discussed in the introduction, there is no way in PureScript to enforce the restriction corresponding to $c \ge k_1, \dots, k_n$.
+And as was discussed in the introduction, there is no way in PureScript to enforce the restriction corresponding to \(c \ge k_1, \dots, k_n\).
 This restriction comes from the fact that variables (and all expressions) are nonnegative.
-So instead, there is a normalization function that sets $c\prime = \max(c, k_1, \dots, k_n, 0)$.
+So instead, there is a normalization function that sets \(c\prime = \max(c, k_1, \dots, k_n, 0)\).
 \begin{minted}{haskell}
 normalizeTail :: Tail -> Tail
 normalizeTail (Tail us u) = Tail us
   (fold1 (NonEmpty u us) <> Max zero)
 \end{minted}
-Thus we see that an expression input as $\max(u+1, v+3)$ has a normal form of $\max(u+1, v+3, 3)$, just by applying the nonnegativity axiom, $\max(u+1, v+3) \ge v+3 \ge 3$.
+Thus we see that an expression input as \(\max(u+1, v+3)\) has a normal form of \(\max(u+1, v+3, 3)\), just by applying the nonnegativity axiom, \(\max(u+1, v+3) \ge v+3 \ge 3\).
 One nice property of this normalization is that appending two normalized expressions results in another normalized expression.
 
 \subsection{Normal Form With Impredicative Maximum}
 
-Instead of a normal form for $\mathcal{L}_{\imax}$ (which would require making somewhat arbitrary choices), expressions are written in the larger language $\mathcal{L}_{\ifop}$ which admits nice normal forms.
-One example of why this is crucial is $(c; b; a), (c; a; b) = ((c; b), b; a), a, ((c; a), a; b), b = (c; b; a), a, b = (c; a; b), a, b$.
-One of the two has to win in this case, but $\imax$ does not commute like that: only $\ifop$ does.
+Instead of a normal form for \(\mathcal{L}_{\imax}\) (which would require making somewhat arbitrary choices), expressions are written in the larger language \(\mathcal{L}_{\ifop}\) which admits nice normal forms.
+One example of why this is crucial is \((c; b; a), (c; a; b) = ((c; b), b; a), a, ((c; a), a; b), b = (c; b; a), a, b = (c; a; b), a, b\).
+One of the two has to win in this case, but \(\imax\) does not commute like that: only \(\ifop\) does.
 
-In particular, $\mathcal{L}_{\ifop}$ has normal forms that are the maximum of cases with values from $\mathcal{L}$, satisfying some normality properties.
-Syntactically an expression in normal form looks like\\ $\max(\ifop(a_1; b_{1,1}; \dots; b_{1,m_1}); \dots; \ifop(a_n; b_{1,1}; \dots; b_{1,m_n}))$ where $a_i$ are normal forms for $\mathcal{L}$ and $b_{i,j}$ occur in sorted order, no duplicates.
+In particular, \(\mathcal{L}_{\ifop}\) has normal forms that are the maximum of cases with values from \(\mathcal{L}\), satisfying some normality properties.
+Syntactically an expression in normal form looks like\\ \(\max(\ifop(a_1; b_{1,1}; \dots; b_{1,m_1}); \dots; \ifop(a_n; b_{1,1}; \dots; b_{1,m_n}))\) where \(a_i\) are normal forms for \(\mathcal{L}\) and \(b_{i,j}\) occur in sorted order, no duplicates.
 This is more clearly expressed in the PureScript type:
 \begin{minted}{haskell}
 newtype Const = Universes (SemigroupMap (Set String) Tail)
 \end{minted}
 Again, the obvious semigroup operation represents taking the maximum of two expressions, though it may not quite be in normal form anymore.
 
-Mathematically, this should be seen as a monotonic function from hypotheticals (sets of variables) to the above $\mathcal{L}$ normal form, and indeed comparing any two normal forms of this type essentially requires computing that function on the union of hypotheticals from both.
+Mathematically, this should be seen as a monotonic function from hypotheticals (sets of variables) to the above \(\mathcal{L}\) normal form, and indeed comparing any two normal forms of this type essentially requires computing that function on the union of hypotheticals from both.
 However, for the purposes of a finite normal form, it is better to store the minimal amount of information to recover the function.
 
 So, along with the above conditions, there is the extra restriction that there is no redundancy: if one hypothetical is a subset of another, then whatever constraints are forced in the smaller (general) hypothetical should not be included in the larger (more specific) hypothetical.
-More on that later, but for example, $\max(\ifop(u; v), u + 1, v)$ is not a normal form: the $u$ in the hypothetical $\{v\}$ is redundant, since $u + 1$ already occurs at the hypothetical $\emptyset$.
-The correct normal form of that expression is simply $\max(u+1, v)$.
+More on that later, but for example, \(\max(\ifop(u; v), u + 1, v)\) is not a normal form: the \(u\) in the hypothetical \(\{v\}\) is redundant, since \(u + 1\) already occurs at the hypothetical \(\emptyset\).
+The correct normal form of that expression is simply \(\max(u+1, v)\).
 
 Again, this is a restriction that cannot be expressed in PureScript, but it lends itself to a normalization function:
 \begin{minted}{haskell}
@@ -479,12 +479,12 @@ normalizeConst (Universes uz) =
 Unlike \inHS`normalizeTail`, however, \inHS`normalizeConst` is not preserved by the na\"ive semigroup operation, since redundancy may be introduced with the expressions in combination that was not present individually.
 However, most of the library works fine with un-normalized expressions.
 
-A normal form $N$ in $\mathcal{L}_{\ifop}$ is in $\mathcal{L}_{\imax}$ exactly when for each $\ifop(e; r_1; \dots; r_m)$ occurring in $N$, there is some sequential ordering of $r_1, \dots, r_n$ such that $r_1 \le N$ and $\ifop(r_2; r_1) \le N$ and so on until $\ifop(r_3; r_2; r_1) \le N, \dots, \ifop(r_m; \dots; r_1) \le N$.
-This is simply the translation from $\mathcal{L}_{\imax}$ to $\mathcal{L}_{\ifop}$ of $\imax(e; r_m; \dots; r_1) \le N$.
-We will see that this property is maintained throughout, to ensure the normal form of $\mathcal{L}_{\imax}$ is indeed closed.
+A normal form \(N\) in \(\mathcal{L}_{\ifop}\) is in \(\mathcal{L}_{\imax}\) exactly when for each \(\ifop(e; r_1; \dots; r_m)\) occurring in \(N\), there is some sequential ordering of \(r_1, \dots, r_n\) such that \(r_1 \le N\) and \(\ifop(r_2; r_1) \le N\) and so on until \(\ifop(r_3; r_2; r_1) \le N, \dots, \ifop(r_m; \dots; r_1) \le N\).
+This is simply the translation from \(\mathcal{L}_{\imax}\) to \(\mathcal{L}_{\ifop}\) of \(\imax(e; r_m; \dots; r_1) \le N\).
+We will see that this property is maintained throughout, to ensure the normal form of \(\mathcal{L}_{\imax}\) is indeed closed.
 
 \subsection{Implementing Impredicative Maximum Through If}
-This is the part that shows that the language is closed for $\mathcal{L}_{\ifop}$ and $\mathcal{L}_{\imax}$.
+This is the part that shows that the language is closed for \(\mathcal{L}_{\ifop}\) and \(\mathcal{L}_{\imax}\).
 
 First we set up two helper functions.
 Then we calculate the combination of variables that have to be zero for the constant to be zero.
@@ -524,11 +524,11 @@ ifop (Universes (SemigroupMap us)) v
 \end{minted}
 
 An expression is zero when:
-$\imax(a; b) = 0$ iff $b = 0$.
-$\ifop(a; b) = 0$ iff $b = 0$ or $a = 0$.
-$\max(a, b) = 0$ iff $a = 0$ and $b = 0$.
-$a+1$ never.
-$\imax(a; \imax(b; c)) = \imax(a; b; c) = (\ifop(a; b; c), \ifop(b; c), c)$
+\(\imax(a; b) = 0\) iff \(b = 0\).
+\(\ifop(a; b) = 0\) iff \(b = 0\) or \(a = 0\).
+\(\max(a, b) = 0\) iff \(a = 0\) and \(b = 0\).
+\(a+1\) never.
+\(\imax(a; \imax(b; c)) = \imax(a; b; c) = (\ifop(a; b; c), \ifop(b; c), c)\)
 
 
 
@@ -536,10 +536,10 @@ $\imax(a; \imax(b; c)) = \imax(a; b; c) = (\ifop(a; b; c), \ifop(b; c), c)$
 %Philosophical.
 %
 %Adding impredicativity to the language of universe levels produces an interesting change in the arithmetic.
-%Without impredicativity, the language $\mathcal{L}$ actually worked just as well over the integers as over the naturals, simply by dropping the nonnegativity axiom.
+%Without impredicativity, the language \(\mathcal{L}\) actually worked just as well over the integers as over the naturals, simply by dropping the nonnegativity axiom.
 %
 %However, with the addition of impredicativity, it appears that the special role of zero is cemented in place.
-%Not only because the definition of $\imax$ uses it, but also in the fact that the manipulation of expressions seems to suggest there be an identity.
+%Not only because the definition of \(\imax\) uses it, but also in the fact that the manipulation of expressions seems to suggest there be an identity.
 %Because it is a \inHS`SemigroupMap` of hypotheses, and there is no sense in requiring it to be nonempty.
 
 
@@ -549,9 +549,9 @@ $\imax(a; \imax(b; c)) = \imax(a; b; c) = (\ifop(a; b; c), \ifop(b; c), c)$
 Relating two level expressions is one of the key components of the constraint solving.
 
 Besides equality of normal forms (that is, equality across all models), there are three fundamental relations that work together to inform about how expressions relate across models.
-The simplest relation is one is always strictly less than the other: e.g. $\max(u,v) < \max(u+1,v+1)$.
-The next simplest relation is that one is always less than or equal to the other \emph{and} there are models where they are equal and arbitrarily large: e.g. $\max(u,v) \lesssim \max(u,v+1)$.
-The third and final relation is that one is always less than or equal to the other, but equality is only achieved when both expressions are zero: $0 \leqslant \max(u,v)$.
+The simplest relation is one is always strictly less than the other: e.g. \(\max(u,v) < \max(u+1,v+1)\).
+The next simplest relation is that one is always less than or equal to the other \emph{and} there are models where they are equal and arbitrarily large: e.g. \(\max(u,v) \lesssim \max(u,v+1)\).
+The third and final relation is that one is always less than or equal to the other, but equality is only achieved when both expressions are zero: \(0 \leqslant \max(u,v)\).
 
 These three relations can be wrapped up into a single semigroup that describes how two level expressions are related.
 The difference between the last two relations, then, is how they combine: the former is infectious, in that it takes priority over the strict inequality, while the latter is subsumed by it.
@@ -636,34 +636,34 @@ These are the Hasse diagrams for \inHS`Rel` and \inHS`Maybe Rel`.
 % max(4,u) LLE max(4,u+1)
 % max(4,u) LLE max(6,u)
 
-For the $\mathcal{L}$ normal form \inHS`Tail`, the expressions are compared variablewise and these results are combined together with the semigroup operation.
+For the \(\mathcal{L}\) normal form \inHS`Tail`, the expressions are compared variablewise and these results are combined together with the semigroup operation.
 
-For the $\mathcal{L}_{\ifop}$ normal form \inHS`Const`, the expressions are compared for each relevant hypothetical and combined with the monoid operation.
+For the \(\mathcal{L}_{\ifop}\) normal form \inHS`Const`, the expressions are compared for each relevant hypothetical and combined with the monoid operation.
 
 \subsection{Proofs}
 There is something weird happening here: comparing variable-wise is the only way to get the right answer, it certainly works, but doesn't fit into as nice of a framework.
-In particular, we cannot prove that $x RUN y$ and $a RUN b$ implies $\max(x,a) RUN \max(y,b)$ because maybe the correct thing to do was to compare $x$ with $b$ and $a$ with $y$.
+In particular, we cannot prove that \(x RUN y\) and \(a RUN b\) implies \(\max(x,a) RUN \max(y,b)\) because maybe the correct thing to do was to compare \(x\) with \(b\) and \(a\) with \(y\).
 It's like we need to make a good-will best-effort attempt to extract information.
 Is it the minimum of all possible comparisons?
 Or just the non-uncomparable?
 Idk.
 Anyways.
 
-Let $x, y, a, b$ be universe expressions.
-Clearly if $x \le y$ and $a \le b$ then $\max(x,a) \le \max(y,b)$, since $\max(\max(x,a),\max(y,b)) = \max(\max(x,y),\max(a,b)) = \max(y,b)$.
-Similarly if $x < y$ and $a < b$ then $\max(x,a) < \max(y,b)$.
+Let \(x, y, a, b\) be universe expressions.
+Clearly if \(x \le y\) and \(a \le b\) then \(\max(x,a) \le \max(y,b)\), since \(\max(\max(x,a),\max(y,b)) = \max(\max(x,y),\max(a,b)) = \max(y,b)\).
+Similarly if \(x < y\) and \(a < b\) then \(\max(x,a) < \max(y,b)\).
 This justifies \inHS`ALT <> ALT = ALT`.
 
-Compare $\max(v+k, e_1)$ and $\max(v+k, e_2)$, where $v$ does not occur in $e_1$ or $e_2$: add \inHS`EEQ` to comparing $e_1$ and $e_2$.
-Compare $\max(v+k, e_1)$ and $\max(v+k+m+1, e_2)$  where $v$ does not occur in $e_1$ or $e_2$: add \inHS`ALT` to comparing $e_1$ and $e_2$.
+Compare \(\max(v+k, e_1)\) and \(\max(v+k, e_2)\), where \(v\) does not occur in \(e_1\) or \(e_2\): add \inHS`EEQ` to comparing \(e_1\) and \(e_2\).
+Compare \(\max(v+k, e_1)\) and \(\max(v+k+m+1, e_2)\)  where \(v\) does not occur in \(e_1\) or \(e_2\): add \inHS`ALT` to comparing \(e_1\) and \(e_2\).
 
 
 The idea is that by comparing variable against variable, we don't run into conflicts in the models we want to produce.
-If we have $u = u$, then the models we want to produce to obtain arbitrarily large equalities hold after considering $\max(u, e_1) = \max(u, e_2)$.
-This is because we can always consider $u$ to be larger that $\max(e_1, e_2)$ -- as long as $e_1$ and $e_2$ do not mention $u$.
-More exactly: to construct a model where $\max(u, e_1) = \max(u, e_2)$ we set all the other variables to $0$ and then take $u = \max(e_1, e_2)$, where $e_1$ and $e_2$ can now be evaluated in the model with all the other variables being $0$.
+If we have \(u = u\), then the models we want to produce to obtain arbitrarily large equalities hold after considering \(\max(u, e_1) = \max(u, e_2)\).
+This is because we can always consider \(u\) to be larger that \(\max(e_1, e_2)\) -- as long as \(e_1\) and \(e_2\) do not mention \(u\).
+More exactly: to construct a model where \(\max(u, e_1) = \max(u, e_2)\) we set all the other variables to \(0\) and then take \(u = \max(e_1, e_2)\), where \(e_1\) and \(e_2\) can now be evaluated in the model with all the other variables being \(0\).
 
-NOTE: normalization helps, but is an orthogonal concern, merely enforcing that $u \ge 0$ for all variables/expressions.
+NOTE: normalization helps, but is an orthogonal concern, merely enforcing that \(u \ge 0\) for all variables/expressions.
 
 
 \section{Solving Universe Levels}
@@ -676,28 +676,28 @@ The actual state that is kept is a map from level expressions to level expressio
 newtype GESolver = GESolver (Map Const Const)
 \end{minted}
 
-The reason for this choice is that the conjuction of $u \ge v$ with $u \ge w$ is $u \ge \max(v, w)$.
+The reason for this choice is that the conjuction of \(u \ge v\) with \(u \ge w\) is \(u \ge \max(v, w)\).
 So having a single level expression for each upper bound suffices.
 
 The primary aspect of solving is just saturating all of the known relations between expressions, starting with reflexivity.
-For example, if $u \ge v$ is a constraint and $v \ge w$ is also a constraint, then $u \ge w$ is a constraint, by transitivity.
-In practice, this means looking at all pairs of key-value pairs and adding $k_i \ge v_j$ when $v_i \ge k_j$.
+For example, if \(u \ge v\) is a constraint and \(v \ge w\) is also a constraint, then \(u \ge w\) is a constraint, by transitivity.
+In practice, this means looking at all pairs of key-value pairs and adding \(k_i \ge v_j\) when \(v_i \ge k_j\).
 However, this does not capture the distributivity of successor.
-In general we want to adjust values by a constant that expresses when $k_j$ becomes less than $v_i$: for the largest $c \in \mathbb{Z}$ such that $v_i \ge k_j + c$, we instead add $k_i \ge v_j + c$ from the chain $k_i \ge v_i \ge k_j + c \ge v_j + c$.
+In general we want to adjust values by a constant that expresses when \(k_j\) becomes less than \(v_i\): for the largest \(c \in \mathbb{Z}\) such that \(v_i \ge k_j + c\), we instead add \(k_i \ge v_j + c\) from the chain \(k_i \ge v_i \ge k_j + c \ge v_j + c\).
 
-If $k_i < v_i$ for some pair, then an error must be thrown since it is no longer consistent (this is important for termination of the saturation algorithm too).
-In fact, more generally one wants to reduce the key if there are parts of $v_i$ that are strictly greater than the corresponding parts of $k_i$.
-For example, if there is the constraint $\max(u, v) \ge \max(w, v+1)$, that is $\max(u, v) \ge w$ and $\max(u, v) \ge v+1$.
-But the latter can only be satisfied by $u \ge v+1$, since $v \ngeq v+1$.
-So $\max(u, v) = u$ and the constraint can be reduced to the pair $u \ge \max(w, v+1)$.
+If \(k_i < v_i\) for some pair, then an error must be thrown since it is no longer consistent (this is important for termination of the saturation algorithm too).
+In fact, more generally one wants to reduce the key if there are parts of \(v_i\) that are strictly greater than the corresponding parts of \(k_i\).
+For example, if there is the constraint \(\max(u, v) \ge \max(w, v+1)\), that is \(\max(u, v) \ge w\) and \(\max(u, v) \ge v+1\).
+But the latter can only be satisfied by \(u \ge v+1\), since \(v \ngeq v+1\).
+So \(\max(u, v) = u\) and the constraint can be reduced to the pair \(u \ge \max(w, v+1)\).
 
-Finally there are a couple wrinkles to be figured out with $\imax$.
-For example, if $\imax(u; v) > 0$ then $\imax(u; v) \ge \max(u, v)$, but recall that it is encoded in $\mathcal{L}_{\ifop}$ as $\max(\ifop(u; v), v)$.
-As a more complicated situation with two variables, $\max(\imax(l; a), \imax(r; b)) > 0$ implies that $\max(a, b) > 0$ so $\max(\imax(l; a), \imax(r; b)) \ge \min(l, r)$, it would be weird to have to add a minimum operator, and again, it is not so obvious to see how this applies in the $\mathcal{L}_{\ifop}$ normal form in full generality and whether it does influence satisfiability.
+Finally there are a couple wrinkles to be figured out with \(\imax\).
+For example, if \(\imax(u; v) > 0\) then \(\imax(u; v) \ge \max(u, v)\), but recall that it is encoded in \(\mathcal{L}_{\ifop}\) as \(\max(\ifop(u; v), v)\).
+As a more complicated situation with two variables, \(\max(\imax(l; a), \imax(r; b)) > 0\) implies that \(\max(a, b) > 0\) so \(\max(\imax(l; a), \imax(r; b)) \ge \min(l, r)\), it would be weird to have to add a minimum operator, and again, it is not so obvious to see how this applies in the \(\mathcal{L}_{\ifop}\) normal form in full generality and whether it does influence satisfiability.
 
-However, by brute-force case analysis, it is possible to decide $\mathcal{L}_{\imax}$ in at worst exponential time over the plain $\mathcal{L}$ algorithm.
+However, by brute-force case analysis, it is possible to decide \(\mathcal{L}_{\imax}\) in at worst exponential time over the plain \(\mathcal{L}\) algorithm.
 So that is what we do.
-This involves looking for constraints of $v+k \ge k+1$ (forcing $v$ to be positive) or $k \ge v+k$ (forcing $v$ to be zero) in the context.
+This involves looking for constraints of \(v+k \ge k+1\) (forcing \(v\) to be positive) or \(k \ge v+k\) (forcing \(v\) to be zero) in the context.
 
 \begin{minted}{haskell}
 data Known = Bounds { lower :: Max Int, upper :: Maybe (Min Int) }
@@ -739,20 +739,20 @@ Just show it never introduces duplicate labels?
 
 TODO: Generate the ``backwards'' rules from the forwards?
 
-We write $\{\ \dots\!r\ \}$ for the record type with fields specified by the record row $(\ \dots\!r\ )$.
-A record row $(\ l : t,\ \dots\!r\ )$ contains type $t$ at a known label $l$ in the head, and $r$ as the tail.
+We write \(\{\ \dots\!r\ \}\) for the record type with fields specified by the record row \((\ \dots\!r\ )\).
+A record row \((\ l : t,\ \dots\!r\ )\) contains type \(t\) at a known label \(l\) in the head, and \(r\) as the tail.
 
-We write $\langle\ \dots\!\mathit{rm}\ \rangle$ for the union type with fields specified by the union row $\lcurvyangle\ \dots\!\mathit{rm}\ \rcurvyangle$.
-A union row $\lcurvyangle\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ \rcurvyangle$ contains an optional type $\mathit{mt}$ at a known label $l$ in the head, and $r$ as the tail.
-That is, $\lcurvyangle\ l,\ \dots\!r\ \rcurvyangle$ denotes the union row with a label $l$ but no type associated to that label, and $\lcurvyangle\ l : t,\ \dots\!r\ \rcurvyangle$ associates to it a type as usual.
+We write \(\langle\ \dots\!\mathit{rm}\ \rangle\) for the union type with fields specified by the union row \(\lcurvyangle\ \dots\!\mathit{rm}\ \rcurvyangle\).
+A union row $\lcurvyangle\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ \rcurvyangle$ contains an optional type \(\mathit{mt}\) at a known label \(l\) in the head, and \(r\) as the tail.
+That is, \(\lcurvyangle\ l,\ \dots\!r\ \rcurvyangle\) denotes the union row with a label \(l\) but no type associated to that label, and \(\lcurvyangle\ l : t,\ \dots\!r\ \rcurvyangle\) associates to it a type as usual.
 
-We write $r \setminus l$ to denote the row $r$ with label $l$ removed.
+We write \(r \setminus l\) to denote the row \(r\) with label \(l\) removed.
 
-First we describe the constraint $r_1 \wedgeonwedge r_2 = r_3$ for typing the recursive record merge operator:
+First we describe the constraint \(r_1 \wedgeonwedge r_2 = r_3\) for typing the recursive record merge operator:
 \begin{displaymath}
 \prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \wedgeonwedge r_2 = r_3}{a \land b : \{\ \dots\!r_3\ \}}
 \end{displaymath}
-TODO: wrinkle: the actual $\wedgeonwedge$ operator in Dhall may need some thought for how it interacts with constraints.
+TODO: wrinkle: the actual \(\wedgeonwedge\) operator in Dhall may need some thought for how it interacts with constraints.
 
 Learning that the label is \emph{not} in the output tells us that the label is in neither of the inputs, and vice-versa:
 \begin{displaymath}
@@ -801,7 +801,7 @@ Finally, learning the label is in both sides triggers the recursive case:
 
 
 
-Next we describe the constraint $r_1 \mathop{/\!/\!/} r_2 = r_3$ for typing the right-biased record merge operator:
+Next we describe the constraint \(r_1 \mathop{/\!/\!/} r_2 = r_3\) for typing the right-biased record merge operator:
 \begin{displaymath}
 \prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \mathop{/\!/\!/} r_2 = r_3}{a \mathop{/\!/} b : \{\ \dots\!r_3\ \}}
 \end{displaymath}
@@ -836,7 +836,7 @@ But it always makes progress on the right side:
   {r_1 \mathop{/\!/\!/}\ (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
 
-Finally we describe the constraint $a \mathop{\$} b \to t_3$ for typing the record--union merge expression:
+Finally we describe the constraint \(a \mathop{\$} b \to t_3\) for typing the record--union merge expression:
 \begin{displaymath}
 \prftree{a : \{\ \dots\!r_1\ \}}{b : \langle\ \dots\!\mathit{rm}_2\ \rangle}{a \mathop{\$} b \to t_3}{\texttt{merge}\ a\ b : t_3}
 \end{displaymath}
@@ -913,7 +913,7 @@ Unification and apartness are symmetric.
 
 NOTE: Check subsumption only happens for types.
 
-Unification and subsumption are the same judgment, just parameterized over a relationship ($(=)$ for unification, $(\le)$ or $(\ge)$ for subsumption) which is only used as the constraint for comparing universe levels right now.
+Unification and subsumption are the same judgment, just parameterized over a relationship ($(=)$ for unification, \((\le)\) or \((\ge)\) for subsumption) which is only used as the constraint for comparing universe levels right now.
 This means that it does not handle row expansion or contraction -- but hopefully row polymorphism is sufficient for that.
 
 Maybe apartness should be called disunifiability, since it does not serve the same purpose as it does in PureScript/Haskell.
