@@ -83,10 +83,22 @@
 
 \iftrue
 \usepackage{unicode-math}
+\setmainfont[Ligatures={Common,Rare,TeX}]{TeX Gyre Pagella}
+\setmathfont[Scale=MatchUppercase]{Asana Math}
+%\setmathfont{Libertinus Math}
+%\setmathfont[Scale=MatchUppercase]{TeX Gyre Pagella Math}
+%\setmonofont[StylisticSet=3]{inconsolata}
+%\usepackage{cascadia-code}
+%\usepackage[scale=0.92,medium,nomap]{FiraMono}
+%\usepackage[scale=0.92,semibold]{sourcecodepro}
+\setmonofont[Scale=0.92,BoldFont=Hasklig Medium]{Hasklig}[Contextuals=Alternate]
+\else
+\iftrue
+\usepackage{unicode-math}
 \setmainfont{Libertinus Serif}
 \setsansfont[Scale=MatchUppercase]{Libertinus Sans}
 \setmathfont{Libertinus Math}
-%\setcodefont{Inconsolata}
+\setcodefont{Inconsolata}
 \else
 \ifxetex
 \RequirePackage[libertine]{newtxmath}
@@ -104,7 +116,7 @@
 \fi
 \fi
 \fi
-
+\fi
 
 
 
@@ -114,6 +126,10 @@
 \DeclareMathOperator{\imax}{imax}
 \DeclareMathOperator{\ifop}{if}
 \newcommand{\subsumedBy}{\unlhd}
+\providecommand{\lcurvyangle}{\langle}
+\providecommand{\rcurvyangle}{\rangle}
+\providecommand{\wedgeonwedge}{\land\land}
+
 
 \newmintinline[inHS]{haskell}{}
 
@@ -542,16 +558,11 @@ The difference between the last two relations, then, is how they combine: the fo
 
 \begin{minted}{haskell}
 data Rel
-  -- equal (and arbitrarily large)
-  = EEQ
-  -- strict inequality
-  | ALT | AGT
-  -- weak inequality, with arbitrarily large equality
-  | HLE | HGE
-  -- weak inequality, but only equal at small values
-  | LLE | LGE
-  -- uncomparable
-  | RUN
+  = EEQ -- equal (and arbitrarily large)
+  | ALT | AGT -- strict inequality
+  | HLE | HGE -- weak inequality, with arbitrarily large equality
+  | LLE | LGE -- weak inequality, but only equal at small values
+  | RUN -- uncomparable
 \end{minted}
 
 This has a commutative, idempotent semigroup structure.
@@ -731,33 +742,34 @@ TODO: Generate the ``backwards'' rules from the forwards?
 We write $\{\ \dots\!r\ \}$ for the record type with fields specified by the record row $(\ \dots\!r\ )$.
 A record row $(\ l : t,\ \dots\!r\ )$ contains type $t$ at a known label $l$ in the head, and $r$ as the tail.
 
-We write $\langle\ \dots\!\mathit{rm}\ \rangle$ for the union type with fields specified by the union row $(\ \dots\!\mathit{rm}\ )$.
-A union row $(\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ )$ contains an optional type $\mathit{mt}$ at a known label $l$ in the head, and $r$ as the tail.
-That is, $(\ l,\ \dots\!r\ )$ denotes the union row with a label $l$ but no type associated to that label, and $(\ l : t,\ \dots\!r\ )$ associates to it a type as usual.
+We write $\langle\ \dots\!\mathit{rm}\ \rangle$ for the union type with fields specified by the union row $\lcurvyangle\ \dots\!\mathit{rm}\ \rcurvyangle$.
+A union row $\lcurvyangle\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ \rcurvyangle$ contains an optional type $\mathit{mt}$ at a known label $l$ in the head, and $r$ as the tail.
+That is, $\lcurvyangle\ l,\ \dots\!r\ \rcurvyangle$ denotes the union row with a label $l$ but no type associated to that label, and $\lcurvyangle\ l : t,\ \dots\!r\ \rcurvyangle$ associates to it a type as usual.
 
 We write $r \setminus l$ to denote the row $r$ with label $l$ removed.
 
-First we describe the constraint $r_1 \land r_2 = r_3$ for typing the recursive record merge operator:
+First we describe the constraint $r_1 \wedgeonwedge r_2 = r_3$ for typing the recursive record merge operator:
 \begin{displaymath}
-\prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \land r_2 = r_3}{a \land b : \{\ \dots\!r_3\ \}}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \wedgeonwedge r_2 = r_3}{a \land b : \{\ \dots\!r_3\ \}}
 \end{displaymath}
+TODO: wrinkle: the actual $\wedgeonwedge$ operator in Dhall may need some thought for how it interacts with constraints.
 
 Learning that the label is \emph{not} in the output tells us that the label is in neither of the inputs, and vice-versa:
 \begin{displaymath}
-\prftree{r_1 = (r_1 \setminus l)}{r_2 = (r_2 \setminus l)}{r_1 \land r_2 = (r_3 \setminus l)}
+\prftree{r_1 = (r_1 \setminus l)}{r_2 = (r_2 \setminus l)}{r_1 \wedgeonwedge r_2 = (r_3 \setminus l)}
 \qquad
-\prftree{r_3 = (r_3 \setminus l)}{(r_1 \setminus l) \land (r_2 \setminus l) = r_3}
+\prftree{r_3 = (r_3 \setminus l)}{(r_1 \setminus l) \wedgeonwedge (r_2 \setminus l) = r_3}
 \end{displaymath}
 
 Learning the label is in the left or right side tells us that the label is in the output, but the constraint is stuck because the types cannot be related yet:
 \begin{displaymath}
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
-  {(\ l : t_1,\ \dots\!r_1\ ) \land r_2 = r_3}
+  {(\ l : t_1,\ \dots\!r_1\ ) \wedgeonwedge r_2 = r_3}
 \qquad
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
-  {r_1 \land (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+  {r_1 \wedgeonwedge (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
 
 Learning the label is in the left or right side and absent from the other does make progress:
@@ -765,14 +777,14 @@ Learning the label is in the left or right side and absent from the other does m
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
   {t_1 = t_3}
-  {r_1 \land r_2 = (r_3 \setminus l)}
-  {(\ l : t_1,\ \dots\!r_1\ ) \land (r_2 \setminus l) = r_3}
+  {r_1 \wedgeonwedge r_2 = (r_3 \setminus l)}
+  {(\ l : t_1,\ \dots\!r_1\ ) \wedgeonwedge (r_2 \setminus l) = r_3}
 \quad
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
   {t_2 = t_3}
-  {r_1 \land r_2 = (r_3 \setminus l)}
-  {(r_1 \setminus l) \land (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+  {r_1 \wedgeonwedge r_2 = (r_3 \setminus l)}
+  {(r_1 \setminus l) \wedgeonwedge (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
 
 Finally, learning the label is in both sides triggers the recursive case:
@@ -782,36 +794,36 @@ Finally, learning the label is in both sides triggers the recursive case:
   {t_1 = \{\ \dots\!r\prime_1\ \}}
   {t_2 = \{\ \dots\!r\prime_2\ \}}  
   {t_3 = \{\ \dots\!r\prime_3\ \}}
-  {r\prime_1 \land r\prime_2 = r\prime_3}
-  {r_1 \land r_2 = (r_3 \setminus l)}
-  {(\ l : t_1,\ \dots\!r_1\ ) \land (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+  {r\prime_1 \wedgeonwedge r\prime_2 = r\prime_3}
+  {r_1 \wedgeonwedge r_2 = (r_3 \setminus l)}
+  {(\ l : t_1,\ \dots\!r_1\ ) \wedgeonwedge (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
 
 
 
-Next we describe the constraint $r_1 \mathop{/\!/} r_2 = r_3$ for typing the right-biased record merge operator:
+Next we describe the constraint $r_1 \mathop{/\!/\!/} r_2 = r_3$ for typing the right-biased record merge operator:
 \begin{displaymath}
-\prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \mathop{/\!/} r_2 = r_3}{a \mathop{/\!/} b : \{\ \dots\!r_3\ \}}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \mathop{/\!/\!/} r_2 = r_3}{a \mathop{/\!/} b : \{\ \dots\!r_3\ \}}
 \end{displaymath}
 
 Again, the label is absent from the output if and only if it is absent from both inputs:
 \begin{displaymath}
-\prftree{r_1 = (r_1 \setminus l)}{r_2 = (r_2 \setminus l)}{r_1 \mathop{/\!/} r_2 = (r_3 \setminus l)}
+\prftree{r_1 = (r_1 \setminus l)}{r_2 = (r_2 \setminus l)}{r_1 \mathop{/\!/\!/} r_2 = (r_3 \setminus l)}
 \qquad
-\prftree{r_3 = (r_3 \setminus l)}{(r_1 \setminus l)\ \mathop{/\!/}\ (r_2 \setminus l) = r_3}
+\prftree{r_3 = (r_3 \setminus l)}{(r_1 \setminus l)\ \mathop{/\!/\!/}\ (r_2 \setminus l) = r_3}
 \end{displaymath}
 
 On the left side it gets stuck until it is known to be absent from the right:
 \begin{displaymath}
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
-  {(\ l : t_1,\ \dots\!r_1\ )\ \mathop{/\!/} r_2 = r_3}
+  {(\ l : t_1,\ \dots\!r_1\ )\ \mathop{/\!/\!/} r_2 = r_3}
 \qquad
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
   {t_1 = t_3}
-  {r_1 \mathop{/\!/} r_2 = (r_3 \setminus l)}
-  {(\ l : t_1,\ \dots\!r_1\ )\ \mathop{/\!/}\ (r_2 \setminus l) = r_3}
+  {r_1 \mathop{/\!/\!/} r_2 = (r_3 \setminus l)}
+  {(\ l : t_1,\ \dots\!r_1\ )\ \mathop{/\!/\!/}\ (r_2 \setminus l) = r_3}
 \end{displaymath}
 
 But it always makes progress on the right side:
@@ -820,8 +832,8 @@ But it always makes progress on the right side:
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
   {t_2 = t_3}
-  {r_1 \mathop{/\!/} r_2 = (r_3 \setminus l)}
-  {r_1 \mathop{/\!/}\ (\ l : t_2,\ \dots\!r_2\ ) = r_3}
+  {r_1 \mathop{/\!/\!/} r_2 = (r_3 \setminus l)}
+  {r_1 \mathop{/\!/\!/}\ (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
 
 Finally we describe the constraint $a \mathop{\$} b \to t_3$ for typing the record--union merge expression:
@@ -831,19 +843,19 @@ Finally we describe the constraint $a \mathop{\$} b \to t_3$ for typing the reco
 
 Both rows must have the same labels, but it gets partially stuck if it is not know whether the union type has data at a label:
 \begin{displaymath}
-\prftree{\mathit{rm}_2 = (\ l \mathop{{:}{?}} \mathit{mt}_2,\ \dots\!(\mathit{rm}_2 \setminus l)\ )}{(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$} \mathit{rm}_2 \to t_3}
+\prftree{\mathit{rm}_2 = \lcurvyangle\ l \mathop{{:}{?}} \mathit{mt}_2,\ \dots\!(\mathit{rm}_2 \setminus l)\ \rcurvyangle}{(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$} \mathit{rm}_2 \to t_3}
 \qquad
-\prftree{r_1 = (\ l : t_1,\ \dots\!(r_1 \setminus l)}{r_1 \mathop{\$}\ (\ l \mathop{{:}{?}} \mathit{mt}_2,\ \dots\!\mathit{rm}_2\ ) \to t3}
+\prftree{r_1 = (\ l : t_1,\ \dots\!(r_1 \setminus l)\ )}{r_1 \mathop{\$}\ \lcurvyangle\ l \mathop{{:}{?}} \mathit{mt}_2,\ \dots\!\mathit{rm}_2\ \rcurvyangle \to t3}
 \end{displaymath}
 
 Knowing that makes progress:
 \begin{displaymath}
 \prftree{t_1 = t_3}{r_1 \mathop{\$} \mathit{rm}_2 \to t_3}
-  {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ (\ l,\ \dots\!\mathit{rm}_2\ ) \to t_3}
+  {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ \lcurvyangle\ l,\ \dots\!\mathit{rm}_2\ \rcurvyangle \to t_3}
 \qquad
 % TODO: shifting, etc.
 \prftree{t_1 = t_2 \to t_3}{r_1 \mathop{\$} \mathit{rm}_2 \to t_3}
-  {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ (\ l : t_2,\ \dots\!\mathit{rm}_2\ ) \to t_3}
+  {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ \lcurvyangle\ l : t_2,\ \dots\!\mathit{rm}_2\ \rcurvyangle \to t_3}
 \end{displaymath}
 
 \begin{verbatim}
