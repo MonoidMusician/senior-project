@@ -13,6 +13,7 @@
 \tcbuselibrary{skins,breakable,raster}
 \usepackage[toc,page]{appendix}
 \usepackage{minted}
+\usepackage{mdframed}
 \appendixpageoff
 
 
@@ -133,8 +134,32 @@
 \newmintinline[inHS]{haskell}{}
 
 
+\mdfdefinestyle{notebox}{
+    linewidth=1pt,
+    innerrightmargin=10pt,
+    innerleftmargin=10pt,
+    innertopmargin=10pt,
+    innerbottommargin=10pt,
+    needspace=60pt,
+    startinnercode={\resetspacing},
+}
+\mdfdefinestyle{Note}{
+    style=notebox,
+    linecolor=CarnationPink,
+    frametitle={\textcolor{WildStrawberry}{Note}},
+}
+
+\mdfdefinestyle{TODO}{
+    style=notebox,
+    linecolor=YellowOrange,
+    frametitle={\textcolor{Bittersweet}{\textsc{Todo}}},
+}
 
 
+\newcommand{\resetspacing}{\doublespace}
+%\doublespace
+%\singlespace
+%\setlength{\baselineskip}{16pt}
 
 
 \begin{document}
@@ -166,9 +191,7 @@ This project is a discovery and implementation of these ideas for the type theor
 %I would like to acknowledge the help I received from every person I have ever met in my life.
 
 \startmain
-%%%%
-%\singlespace
-%\setlength{\baselineskip}{16pt}
+\resetspacing
 
 \intro
 
@@ -282,6 +305,87 @@ In particular, the universe levels produce arithmetical constraints that are ess
 
 The unification judgment will be written \(A \equiv B \mapsto C\) for the unification of \(A\) and \(B\) resulting in a new unified term \(C\) (along with constraints to make them unify), and computationally this is a part of typechecking.
 
+\section{Constraints}
+
+Now we represent constraints explicitly during type inference.
+The new judgment looks like \(\Gamma \vdash e : T \Leftarrow C_1\) and is read as ``In context \(\Gamma\), expression \(e\) is inferred to have type \(T\) once the constraints \(C_1\) are satisfied''.
+Algorithmically, \(\Gamma\) and \(e\) are the inputs to the type inference procedure and \(T\) \emph{and} \(C_1\) are the outputs.
+This might be surprising given an interpretation of the judgment as ``\(e\) has type \(T\) if \(C_1\) is satisfied''.
+But it is really making the claim ``\(e\) can \emph{only} have type \(T\), and that \emph{only} occurs when \(C_1\) is satisfied''.
+
+\bigskip
+\begin{mdframed}[style=Note]
+Looking forward, it would be cool to see if \(\Gamma\) could also be an output of the algorithm.
+This relates to a concept called principal typings.
+See the conclusion for more.
+\end{mdframed}
+
+The usual (three-place) type inference judgment could now be shorthand for inference that generates no constraints:
+
+\begin{displaymath}
+\prftree[double]{\Gamma \vdash e : T \Leftarrow \emptyset}{\Gamma \vdash e : T}
+\end{displaymath}
+
+Note that we only want to mention constraints that are satisfiable (or not known to be unsatisfiable!).
+That is, we want type inference to stop on \inHS`assert : 2 + 2 === 5` instead of continuing with unsatisfiable constraints.
+
+As written, the Dhall standard suggests inferring the type of the binding, and then substituting it in and inferring the type of the resulting expression:
+
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : T_1}{\Gamma \vdash e_2[x \coloneq e_1] : T_2}{\Gamma \vdash \inHS`let`\ x\ \inHS`=`\ e_1\ \inHS`in`\ e_2 : T_2}
+\end{displaymath}
+
+However, in practice what most implementations do is to extend the context by including both the inferred type of the variable and its defined value:
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : T_1}{\Gamma, (x \coloneq e_1 : T_1) \vdash e_2 : T_2}{\Gamma \vdash \inHS`let`\ x\ \inHS`=`\ e_1\ \inHS`in`\ e_2 : T_2[x \coloneq e_1]}
+\end{displaymath}
+Notice that this requires the substitution be performed in the output type now, but this is generally less work -- in particular, for value-level variables that do not occur in the type!
+Maybe the output substitution isn't necessary if the type judgment is well-crafted.
+
+\begin{mdframed}[style=Note]
+Under lazy evaluation, if the variable \(x\) is never used, it will not be evaluated.
+Thus it would still be safe (with respect to evaluation and type-safety) to wholly omit the first assumption \(\Gamma \vdash e_1 : T_1 \Leftarrow C_1\), since it is unnecessary when \(x\) does not appear in \(e_2\) and it would merely be deferred to the usage sites when \(x\) does occur.
+However, this is a bad idea for a couple reasons:
+First it breaks the formal assumption that if an expression typechecks, its subexpressions typecheck (in the appropriate context).
+Second, it would be surprising for users of the language who rely on this property, even informally through their intuition but also formally.
+As a particular example, assertion expressions are often used in let bindings to formally assert properties of programs.
+These assertion expressions are never evaluated: there is no way to force their evaluation in Dhall!
+Third, it also makes error messages more unpredictable: the error would be deferred and look like it was coming from inside \(e_2\) when it really occurred in \(e_1\), which just happened to get embedded into \(e_2\).
+\end{mdframed}
+
+
+\subsection{Polymorphism}
+These judgments do not get us polymorphism yet, though, because the metavariables are global.
+Instead, we need to track what metavariables to generalize over, and then instantiate them at use sites.
+
+There are two ways to do this, corresponding to the two styles of \inHS`let`-inference above:
+If we are doing inference on the substituted expression \(e_2[x \coloneq e_2]\), we can simply make sure that the metavariables are generalized for each instantiation, which should be direct (once we are sure what metavariables to generalize).
+The second style requires a bit more work, but it amounts to keeping track of the unresolved constraints on the generalized metavariables, and then generalizing.
+
+We will prefer the second style for the same reasons: the inference work is memo\"ized, and the instantiating work is substantially smaller.
+
+We can probably get by with ``guessing'' what metavariables occur: the ones that occur but aren't present earlier in context.
+
+Maybe we want to discharge hidden variables from constraints.
+Should be possible?
+
+In fact, this observation leads us to the observation that we want to keep a whole type inference constraint in context:
+
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : T_1 \Leftarrow C_1}{\Gamma, (x \coloneq e_1 : T_1 \Leftarrow C_1) \vdash e_2 : T_2 \Leftarrow C_2}{\Gamma \vdash \inHS`let`\ x\ \inHS`=`\ e_1\ \inHS`in`\ e_2 : T_2[x \coloneq e_1] \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+
+The magic happens in the variable judgment:
+\begin{displaymath}
+\prftree{vs\text{\ to generalize over with corresponding fresh\ } us}{\Gamma, (x \coloneq e : T \Leftarrow C), \Delta \vdash x : T[vs \coloneq us] \Leftarrow C[vs \coloneq us]}
+\end{displaymath}
+When we see a variable, we look it up in the context, complete with its type and constraints, and then we reinstantiate the generalized variables while copying the type and constraint.
+
+\begin{mdframed}[style=Note]
+We may need to inspect \(e\) to catch some metavariables to be generalized in the constraints, but maybe they should be already discarded.
+That is, if there are metavariables that occur in \(e\) but not \(T\), we should try to eliminate them from the constraints.
+\end{mdframed}
+
 \chapter{Universes}
 \label{universes}
 
@@ -289,7 +393,7 @@ How do you study something in type theory?
 By giving it a type!
 Universes are a way to give types to types, and they would be uninteresting if not for some difficulties that arise in ensuring their consistency.
 
-The na\" ive way of doing it would be to say that all types live in a single universe, call it \inHS`Type`.
+The na\"ive way of doing it would be to say that all types live in a single universe, call it \inHS`Type`.
 This universe is in fact a type, so it must be the case that \inHS`Type : Type`.
 However, this ``\inHS`Type`-in-\inHS`Type`'' rule makes most type theories inconsistent, due to results such as Girard's paradox and its simplification as Hurkens' paradox.
 These are in some ways analogous to Russell's paradox: just like there can be no set of all sets in a consistent set theory, there can be no type of all types in a consistent type theory.
@@ -439,7 +543,9 @@ and later, when subtracting constants from expressions based on their relationsh
 it will be convenient to temporarily allow negative integers to appear in constraints, although in the global picture nothing will actually be negative: no variables and no expressions.
 Certainly it will be the case that all the inputs are nonnegative integers, and this can be enforced syntactically when parsing programs.
 
-TODO: Will variables only appear in the context subtracted by an amount they are known to be greater than or equal to?
+\begin{mdframed}[style=TODO]
+Will variables only appear in the context subtracted by an amount they are known to be greater than or equal to?
+\end{mdframed}
 
 And as was discussed in the introduction, there is no way in PureScript to enforce the restriction corresponding to \(c \ge k_1, \dots, k_n\).
 This restriction comes from the fact that variables (and all expressions) are nonnegative.
@@ -650,10 +756,12 @@ A new operation is needed because if two impredicative expressions can be equal 
 So in this new operation, \inHS`LGE` dominates \inHS`AGT` and \inHS`LLE` dominates \inHS`ALT` instead of the other way around.
 That is, the distinction between \inHS`LGE` and \inHS`HGE` is not so useful anymore (they are adjacent in the semilattice), but it might as well be kept around since the information is available!
 
-TODO: it seems to work fine for \(\imax\), but it actually does not wholly work for \(\ifop\).
+\begin{mdframed}[style=TODO]
+It seems to work fine for \(\imax\), but it actually does not wholly work for \(\ifop\).
 For example, \(\ifop(y; x)\) compares to \(\ifop(y+1; x)\) as \inHS`HLE`, even though they are only equal at zero (since \(x\) does not contribute its values).
 Actually it has a bug for \(x\) versus \(\imax(x+1; x)\) where it returns \inHS`HLE` instead of \inHS`LLE`.
 So maybe it really should be collapsed \dots
+\end{mdframed}
 
 \hfill\begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
     \node (RUN) at (0,2.5) {\inHS`RUN`};
@@ -722,7 +830,9 @@ If we have \(u = u\), then the models we want to produce to obtain arbitrarily l
 This is because we can always consider \(u\) to be larger that \(\max(e_1, e_2)\) -- as long as \(e_1\) and \(e_2\) do not mention \(u\).
 More exactly: to construct a model where \(\max(u, e_1) = \max(u, e_2)\) we set all the other variables to \(0\) and then take \(u = \max(e_1, e_2)\), where \(e_1\) and \(e_2\) can now be evaluated in the model with all the other variables being \(0\).
 
-NOTE: normalization helps, but is an orthogonal concern, merely enforcing that \(u \ge 0\) for all variables/expressions.
+\begin{mdframed}[style=Note]
+Normalization of \inHS`Tail` expressions helps, but is an orthogonal concern, merely enforcing that \(u \ge 0\) for all variables/expressions.
+\end{mdframed}
 
 
 
@@ -798,10 +908,14 @@ In particular, apartness will direct the path of solving, while unification cons
 Unlike universe constraints, which do not necessarily “solve” for universe level variables, row constraints are best expressed by solving for variables and filling in information partially.
 One challenge is the fact that information comes in in a quasi-ordered fashion, while rows have to conceptually be completely unordered.
 
-TODO: How to disallow duplicate labels?
+\begin{mdframed}[style=TODO]
+How to disallow duplicate labels?
 Just show it never introduces duplicate labels?
+\end{mdframed}
 
-TODO: Generate the ``backwards'' rules from the forwards?
+\begin{mdframed}[style=TODO]
+Generate the ``backwards'' rules from the forwards?
+\end{mdframed}
 
 We write \(\{\ \dots\!r\ \}\) for the record type with fields specified by the record row \((\ \dots\!r\ )\).
 A record row \((\ l : t,\ \dots\!r\ )\) contains type \(t\) at a known label \(l\) in the head, and \(r\) as the tail.
@@ -816,7 +930,10 @@ First we describe the constraint \(r_1 \wedgeonwedge r_2 = r_3\) for typing the 
 \begin{displaymath}
 \prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \wedgeonwedge r_2 = r_3}{a \land b : \{\ \dots\!r_3\ \}}
 \end{displaymath}
-TODO: wrinkle: the actual \(\wedgeonwedge\) operator in Dhall may need some thought for how it interacts with constraints.
+
+\begin{mdframed}[style=TODO]
+Wrinkle: the actual \(\wedgeonwedge\) operator in Dhall may need some thought for how it interacts with constraints.
+\end{mdframed}
 
 Learning that the label is \emph{not} in the output tells us that the label is in neither of the inputs, and vice-versa:
 \begin{displaymath}
