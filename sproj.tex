@@ -121,14 +121,13 @@
 
 
 
-
 %Your macros, if you have any.
 \DeclareMathOperator{\imax}{imax}
 \DeclareMathOperator{\ifop}{if}
 \newcommand{\subsumedBy}{\unlhd}
 \providecommand{\lcurvyangle}{\langle}
 \providecommand{\rcurvyangle}{\rangle}
-\providecommand{\wedgeonwedge}{\land\land}
+\providecommand{\wedgeonwedge}{\barwedge}
 
 
 \newmintinline[inHS]{haskell}{}
@@ -250,6 +249,14 @@ Instead, properties like this must be maintained as informal invariants of PureS
 On the other hand, set theory (the supposed language of mathematical practice) is great at forming subtypes (i.e. subsets), but is less clear with inductive types.
 In fact, many things that PureScript models with inductive types (such as the \inHS`SemigroupMap` type of unordered associative lists, considered as monoids under keywise appending) are best denoted by very different object in set theory (like functions of finite support).
 Similarly, there is also differences of vocabulary between Dhall and PureScript, the same concept goes by different names, for example, \inHS`Text` in Dhall is \inHS`String` in PureScript.
+
+\chapter{Background and Setup}
+
+\section{Monoids and Semilattices}
+
+Background on monoids and semilattices since they are the main driver of information in the type inference algorithm.
+
+\section{Monads}
 
 \chapter{Type Inference}
 \label{type-inf}
@@ -551,7 +558,7 @@ Relating two level expressions is one of the key components of the constraint so
 Besides equality of normal forms (that is, equality across all models), there are three fundamental relations that work together to inform about how expressions relate across models.
 The simplest relation is one is always strictly less than the other: e.g. \(\max(u,v) < \max(u+1,v+1)\).
 The next simplest relation is that one is always less than or equal to the other \emph{and} there are models where they are equal and arbitrarily large: e.g. \(\max(u,v) \lesssim \max(u,v+1)\).
-The third and final relation is that one is always less than or equal to the other, but equality is only achieved when both expressions are zero: \(0 \leqslant \max(u,v)\).
+The third and final relation is that one is always less than or equal to the other, but equality is only achieved when both expressions are small: \(0 \leqslant \max(u,v)\).
 
 These three relations can be wrapped up into a single semigroup that describes how two level expressions are related.
 The difference between the last two relations, then, is how they combine: the former is infectious, in that it takes priority over the strict inequality, while the latter is subsumed by it.
@@ -638,7 +645,59 @@ These are the Hasse diagrams for \inHS`Rel` and \inHS`Maybe Rel`.
 
 For the \(\mathcal{L}\) normal form \inHS`Tail`, the expressions are compared variablewise and these results are combined together with the semigroup operation.
 
-For the \(\mathcal{L}_{\ifop}\) normal form \inHS`Const`, the expressions are compared for each relevant hypothetical and combined with the monoid operation.
+For the \(\mathcal{L}_{\ifop}\) normal form \inHS`Const`, the expressions are compared for each relevant hypothetical and combined with \textbf{new} monoid operation.
+A new operation is needed because if two impredicative expressions can be equal at one hypothetical, they of course be equal overall, not matter if it is a low equality or a high equality.
+So in this new operation, \inHS`LGE` dominates \inHS`AGT` and \inHS`LLE` dominates \inHS`ALT` instead of the other way around.
+That is, the distinction between \inHS`LGE` and \inHS`HGE` is not so useful anymore (they are adjacent in the semilattice), but it might as well be kept around since the information is available!
+
+TODO: it seems to work fine for \(\imax\), but it actually does not wholly work for \(\ifop\).
+For example, \(\ifop(y; x)\) compares to \(\ifop(y+1; x)\) as \inHS`HLE`, even though they are only equal at zero (since \(x\) does not contribute its values).
+Actually it has a bug for \(x\) versus \(\imax(x+1; x)\) where it returns \inHS`HLE` instead of \inHS`LLE`.
+So maybe it really should be collapsed \dots
+
+\hfill\begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
+    \node (RUN) at (0,2.5) {\inHS`RUN`};
+    \node (HLE) at (1,2)  {\inHS`HLE`};
+    \node (HGE) at (-1,2) {\inHS`HGE`};
+    \node (ALT) at (1,1.0)  {\inHS`LLE`};
+    \node (EEQ) at (0,1.5) {\inHS`EEQ`};
+    \node (AGT) at (-1,1.0) {\inHS`LGE`};
+    \node (LLE) at (1,0.5)  {\inHS`ALT`};
+    \node (LGE) at (-1,0.5) {\inHS`AGT`};
+
+    \draw [thick] (RUN) -- (HLE);
+    \draw [thick] (RUN) -- (HGE);
+    \draw [thick] (HLE) -- (ALT);
+    \draw [thick] (HGE) -- (AGT);
+    \draw [thick] (HLE) -- (EEQ);
+    \draw [thick] (HGE) -- (EEQ);
+    \draw [thick] (ALT) -- (LLE);
+    \draw [thick] (AGT) -- (LGE);
+\end{tikzpicture}\hfill\hfill
+\begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
+    \node (RUN) at (0,2.5) {\inHS`Just RUN`};
+    \node (HLE) at (1,2)  {\inHS`Just HLE`};
+    \node (HGE) at (-1,2) {\inHS`Just HGE`};
+    \node (ALT) at (1,1.0)  {\inHS`Just LLE`};
+    \node (EEQ) at (0,1.5) {\inHS`Just EEQ`};
+    \node (AGT) at (-1,1.0) {\inHS`Just LGE`};
+    \node (LLE) at (1,0.5)  {\inHS`Just ALT`};
+    \node (LGE) at (-1,0.5) {\inHS`Just AGT`};
+    \node (bot) at (0,0) {\inHS`Nothing`};
+
+    \draw [thick] (RUN) -- (HLE);
+    \draw [thick] (RUN) -- (HGE);
+    \draw [thick] (HLE) -- (ALT);
+    \draw [thick] (HGE) -- (AGT);
+    \draw [thick] (HLE) -- (EEQ);
+    \draw [thick] (HGE) -- (EEQ);
+    \draw [thick] (ALT) -- (LLE);
+    \draw [thick] (AGT) -- (LGE);
+    \draw [thick] (RUN) -- (HGE);
+    \draw [thick] (bot) -- (LGE);
+    \draw [thick] (bot) -- (LLE);
+    \draw [thick] (bot) -- (EEQ);
+\end{tikzpicture}\hfill\null
 
 \subsection{Proofs}
 There is something weird happening here: comparing variable-wise is the only way to get the right answer, it certainly works, but doesn't fit into as nice of a framework.
@@ -664,6 +723,9 @@ This is because we can always consider \(u\) to be larger that \(\max(e_1, e_2)\
 More exactly: to construct a model where \(\max(u, e_1) = \max(u, e_2)\) we set all the other variables to \(0\) and then take \(u = \max(e_1, e_2)\), where \(e_1\) and \(e_2\) can now be evaluated in the model with all the other variables being \(0\).
 
 NOTE: normalization helps, but is an orthogonal concern, merely enforcing that \(u \ge 0\) for all variables/expressions.
+
+
+
 
 
 \section{Solving Universe Levels}
@@ -703,7 +765,9 @@ This involves looking for constraints of \(v+k \ge k+1\) (forcing \(v\) to be po
 data Known = Bounds { lower :: Max Int, upper :: Maybe (Min Int) }
 \end{minted}
 
-
+\section{Future Work}
+Better errors (to make it actually associative).
+Higher-order possibilities?
 
 
 
@@ -924,6 +988,16 @@ Technically they can also represent non-types, but unification is much less usef
 
 Metavariables can of course be unified with anything (as long as scope matches up?), and so will be apart from nothing.
 
+\section{Metavariables}
+
+Map of metavariables to their (partially filled-in) values.
+Error state has some metavariables with contradictory assignments.
+
+\section{Context}
+
+Dealing with variables.
+I guess when you're unifying into a lambda, you want it to already be alpha-normalized.
+
 \section{Unification and Subsumption}
 Unification is essentially a command to the typechecker to do what it needs to make two types be the same.
 In particular, this will involve increasing known information about metavariables and adding constraints (both universe and row constraints) to the context.
@@ -932,7 +1006,7 @@ C.f. judgmental equality is a judgment not a proposition.
 
 As mentioned above, unification and subsumption are the same judgment.
 
-
+Subsumption is a relation that guarantees a term of one type can be used in a place where another related type is expected.
 
 \section{Apartness}
 Apartness tests whether two expressions could ever be unified.
@@ -955,6 +1029,10 @@ Controversial, because they do not compose:
 
 
 
+\chapter{Properties}
+
+Characterize type-level functions (between universes).
+
 
 
 \chapter{Putting Everything Together}
@@ -967,6 +1045,7 @@ Each usage of a polymorphic variable will have its polymorphic variables instant
 Types can be syntactically omitted where they were previously required.
 Also replaced with a metavariable syntax in other positions.
 (TODO: characterize when inference is perfect.)
+For superpositions (TODO: characterize), since the source is immutable, they must be replaced with metavariables and said to already unify (maybe that can be done through syntax like \inHS`let v = ?metavar in let veq = assert v === [[superposition]] in v`).
 
 %\chapter{Conclusion}
 
