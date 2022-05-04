@@ -13,7 +13,8 @@
 \tcbuselibrary{skins,breakable,raster}
 \usepackage[toc,page]{appendix}
 \usepackage{minted}
-\usepackage{mdframed}
+\usepackage[framemethod=tikz]{mdframed}
+
 \appendixpageoff
 
 
@@ -23,6 +24,10 @@
 \usepackage{bardtex}
 \styleoption{seniorproject}
 
+\righthyphenmin=4
+\lefthyphenmin=4
+\emergencystretch=0pt
+\tolerance=2000
 
 
 
@@ -82,6 +87,10 @@
 \makeatother
 \fi
 
+
+
+
+
 \iftrue
 \usepackage{unicode-math}
 \setmainfont[Ligatures={Common,Rare,TeX}]{TeX Gyre Pagella}
@@ -132,6 +141,7 @@
 
 
 \newmintinline[inHS]{haskell}{}
+\setminted{baselinestretch=1}
 
 
 \mdfdefinestyle{notebox}{
@@ -141,18 +151,33 @@
     innertopmargin=10pt,
     innerbottommargin=10pt,
     needspace=60pt,
-    startinnercode={\resetspacing},
+    startcode={\colorlet{saved}{.}},
+    startinnercode={\resetspacing \color{saved}},
+    apptotikzsetting={
+      \tikzset{mdfbackground/.style={fill=white,opacity=0.0}}
+      \tikzset{mdfframetitlebackground/.style={fill=white,opacity=0.0}}
+    },
+    % https://tex.stackexchange.com/questions/114213/horizontal-dashed-line-on-page-break-in-listings-environment/114762#114762
+    firstextra={\draw[dashed,line width=1pt] (O) -- (P|-O);},
+    secondextra={\draw[dashed,line width=1pt] (O|-P) -- (P);},
+    middleextra={\draw[dashed,line width=1pt] (O) -- (P|-O);\draw[dashed,line width=1pt] (O|-P) -- (P);},
 }
 \mdfdefinestyle{Note}{
     style=notebox,
     linecolor=CarnationPink,
     frametitle={\textcolor{WildStrawberry}{Note}},
+    firstextra={\draw[dashed,line width=1pt,color=CarnationPink] (O) -- (P|-O);},
+    secondextra={\draw[dashed,line width=1pt,color=CarnationPink] (O|-P) -- (P);},
+    middleextra={\draw[dashed,line width=1pt,color=CarnationPink] (O) -- (P|-O);\draw[dashed,line width=1pt,color=CarnationPink] (O|-P) -- (P);},
 }
 
 \mdfdefinestyle{TODO}{
     style=notebox,
     linecolor=YellowOrange,
     frametitle={\textcolor{Bittersweet}{\textsc{Todo}}},
+    firstextra={\draw[dashed,line width=1pt,color=YellowOrange] (O) -- (P|-O);},
+    secondextra={\draw[dashed,line width=1pt,color=YellowOrange] (O|-P) -- (P);},
+    middleextra={\draw[dashed,line width=1pt,color=YellowOrange] (O) -- (P|-O);\draw[dashed,line width=1pt,color=YellowOrange] (O|-P) -- (P);},
 }
 
 
@@ -160,6 +185,17 @@
 %\doublespace
 %\singlespace
 %\setlength{\baselineskip}{16pt}
+
+
+
+% dark mode
+\iffalse
+\pagecolor[HTML]{151012}\color[HTML]{abb2bf}
+\fi
+
+
+
+
 
 
 \begin{document}
@@ -176,8 +212,9 @@
 
 Type unification takes type inference a step further by allowing non-local flow of information.
 By exposing the algebraic structure of type unification, we obtain even more flexibility as well as clarity in the implementation.
+In particular, the main contribution is an explicit description of the arithmetic of universe levels and consistency of constraints of universe levels, with hints at how row types and general unification/subsumption can fit into the same framework of constraints.
 The compositional nature of the algebras involved ensure correctness and reduce arbitrariness: properties such as associativity mean that implementation details of type inference do not leak in error messages, for example.
-This project is a discovery and implementation of these ideas for the type theory of the Dhall programming language, with implementation in PureScript.
+This project is a discovery and implementation of these ideas by extending the type theory of the Dhall programming language, with implementation in PureScript.
 
 
 \tableofcontents
@@ -186,9 +223,13 @@ This project is a discovery and implementation of these ideas for the type theor
 
 %I dedicate this senior project to every person I have ever met in my life.
 
-%\acknowl
+\acknowl
 
-%I would like to acknowledge the help I received from every person I have ever met in my life.
+I would like to thank my advisor, Bob McGrail, for giving me the latitude and encouragement to explore these topics on my own and with his guidance.
+
+Many thanks to Gabriella Gonzalez for not only creating Dhall and maintaining a welcoming community around it but also being supportive of my exploration and meeting with me several times to discuss ideas.
+
+I would also like to thank other members of the Type Theory community for short but interesting conversations each: Robert Harper, Reed Mullanix, Callan McGill, Asad Saeeduddin, Philippa Cowderoy, Gabriel Scherer, and more.
 
 \startmain
 \resetspacing
@@ -205,8 +246,24 @@ In particular, lambda abstractions have to specify their input type, even though
 In this example, the user has to specify that the variable \inHS`n` has type \inHS`Natural`, even though that is the only type that makes the expression typecheck: since the addition operator \inHS`+` in Dhall is not overloaded, it can only take two arguments of type \inHS`Natural`!
 However, because this information requires looking at context (the usage of \inHS`n` as an argument to \inHS`+`), it is not covered by the current rules of type inference in Dhall.
 
+Even before inferring whole types, though, there are two subproblems that must be tackled: universe levels and row types.
+These are aspects of types that can be detached from the structure of the types, and analyzed on their own.
+
+As it stands, the user has to commit to exactly what fields must be present in records and unions, as in the following example:
+\begin{minted}{Haskell}
+\(r : { x : Natural, y : Natural }) -> r.x + r.y
+\end{minted}
+This function can only take a record with fields \inHS`x` and \inHS`y` (of the appropriate type), even though any record with additional fields would work just as well!
+A formalism of row types will loosen this restriction and allow a most general type to be given to functions like this that will encompass all potential usages.
+
+Universe levels will be introduced later, but they suffer from similar problems.
+As one example, \inHS`Universe 0` here can be replaced with any other universe to produce a valid identity function, but without universe polymorphism these identity functions will all require separate definitions, for \inHS`Universe 1` and \inHS`Universe 2` and so on:
+\begin{minted}{Haskell}
+\(T : Universe 0) -> \(v : T) -> v
+\end{minted}
+
 This project will increase the flexibility of Dhall while still keeping the same philosophy of straightforward type inference rules.
-In particular this means adding universe and row polymorphism plus general type unification to the language.
+In particular this means adding \emph{universe and row polymorphism} plus \emph{general type unification} to the language.
 Universes are a technical detail of type theory: they are what allow types to be first-class, however, to ensure the theory remains consistent, they require some bookkeeping which is of little interest from a programmer's perspective.
 Rows are certainly more interesting from a programmer's point of view: they allow coding to open interfaces of data addressed by labels, but they have their own challenges in bookkeeping.
 In fact, these concepts are already lurking in the existing rules for Dhall, and this project is allowing them to come into their own as concepts represented within the type theory in their own right.
@@ -245,10 +302,30 @@ The difference between type inference and type checking is that the former must 
 In some type systems, there is a significant difference between these modes: if the same expression could be assigned different types, type checking has more information to nudge the types in a particular direction, while type inference sort of has to make a guess as to which is intended.
 They certainly should be compatible in the sense that an inferred type should also satisfy type checking, but type checking in general may give different results.
 However, for the purposes of this research, type inference is primary, and type checking is implemented in terms of type inference, so they may be conflated.
-Additionally, since there is no noun for a program that carries out type inference, ``typechecker'' covers both.
+Additionally, since there is no term for a program that carries out type inference, ``typechecker'' covers both.
+
+\subsection{Consistency of a Type Theory}
 
 A key property of type theories is that of consistency.
 There are two forms of consistency.
+As a computational calculus, the evaluation rules of a type theory would be regarded as \emph{inconsistent} if all terms were equatable under the rules of evaluation.
+This is the sense in which untyped lambda calculus is consistent.
+As a system of logic, however, the more relevant notion is that a logic system is consistent when not all types are inhabited by terms.
+(In considering propositions as types, this corresponds to not all propositions being provable.)
+
+Most type theories have one or several types that, if inhabited, would imply all other types are inhabited.
+For example, in Dhall, the empty union type \inHS`<>` would be one example of such a type, since a function \inHS`forall (T : Type) -> <> -> T` is derivable in Dhall.
+By flipping those arguments, \inHS`<> -> (forall (T : Type) -> T)` suggests another type that is in fact equivalent: the type \inHS`forall (T : Type) -> T` obviously implies all other types.
+These ``false'' types, then, must be uninhabited in a consistent type theory, and it is sufficient to prove that one is uninhabited.
+
+The goal of consistent type theories, then, is to establish a typing system that preserves this form of consistency.
+
+This consistency is also important from a programming perspective, as it relates to termination of evaluation.
+There is no normal form for false types, so if there is a term that inhabits them, it must have an infinite chain of reductions, demonstrating that evaluation is not terminating if the theory is inconsistent.
+
+Though Dhall has a formal standard specifying its type theory (with typechecking and evaluation semantics), it does not currently have a proof of consistency.
+However its rules are based on systems known to be consistent, and the extensions in this paper are simple extensions to that, with constraint solving for metavariables, subsumption, and let-polymorphism.
+In particular, let-polymorphism should be a conservative extension, since every term written with a polymorphic let can instead be written with the substitution applied directly.
 
 % tension between ascribing types and living in types
 
@@ -256,13 +333,13 @@ There are two forms of consistency.
 \label{methods}
 
 The gold standard for research like this would be an implementation of the ideas and corresponding proofs formalized in a proof assistant, like Agda or Lean.
-However, this would too ambitious: computer-assisted proofs are notoriously exacting, frustrating, and difficult to produce: they are really computer-hindered proofs, if you will.
+However, this would be too ambitious: computer-assisted proofs are notoriously exacting, frustrating, and difficult to produce.
 So for this project, the scope is more modest and colloquial: an implementation in PureScript along with informal proofs in the language of common mathematics practice.
 
-PureScript is a functional programming language that is quite similar to Haskell, but with strict evaluation and compiling to JavaScript.
+PureScript is a functional programming language that is quite similar to Haskell, but with strict evaluation and compilation to JavaScript.
 Since PureScript is much newer than Haskell, it has the chance to revisit some of Haskell's design decisions.
 One of PureScript's innovations is the addition of row types.
-However, the row types discussed in this project differ significantly in implementation and scope from PureScript's, although the basic ideas are similar.
+However, the row types for Dhall discussed in this project differ significantly in implementation and scope from PureScript's, although the basic ideas are similar.
 
 PureScript is great for specifying executable code, but there's an impedance mismatch between PureScript and mathematical practice.
 PureScript, for the most part, has a concrete syntax for its datatypes, which is great for clarity of algorithms, but it lacks the ability to form subtypes, which complicates proofs of correctness.
@@ -270,16 +347,163 @@ For example, from the type of lists in PureScript, one cannot formally construct
 Instead, properties like this must be maintained as informal invariants of PureScript programs instead of being bundled into the datatypes and checked for type safety.
 
 On the other hand, set theory (the supposed language of mathematical practice) is great at forming subtypes (i.e. subsets), but is less clear with inductive types.
-In fact, many things that PureScript models with inductive types (such as the \inHS`SemigroupMap` type of unordered associative lists, considered as monoids under keywise appending) are best denoted by very different object in set theory (like functions of finite support).
+In fact, many things that PureScript models with inductive types (such as the \inHS`SemigroupMap` type of unordered associative lists, considered as monoids under keywise appending) are best denoted by very different objects in set theory (like functions of finite support).
 Similarly, there is also differences of vocabulary between Dhall and PureScript, the same concept goes by different names, for example, \inHS`Text` in Dhall is \inHS`String` in PureScript.
+
+
+
+
+
+
 
 \chapter{Background and Setup}
 
-\section{Monoids and Semilattices}
+\section{Datatypes}
 
-Background on monoids and semilattices since they are the main driver of information in the type inference algorithm.
+Modern programming languages feature inductive types, which are least fixed points of specified constructors.
+In their simplest form they are called Algebraic Data Types (ADTs), which are what PureScript supports.
+ADTs encompass both sum types and product types, and more general recursive types.
 
-\section{Monads}
+Product types have one constructor and multiple fields:
+\begin{minted}{Haskell}
+data Bounds = MkBounds (Max Int) (Maybe (Min Int))
+MkBounds :: Max Int -> Maybe (Min Int) -> Bounds
+\end{minted}
+This datatype has one constructor \inHS`MkBounds` which has the type shown above.
+
+Records in both PureScript and Dhall allow naming the fields of a product type:
+\begin{minted}{Haskell}
+{ min :: Max Int, max :: Maybe (Min Int) }
+\end{minted}
+
+Sum types have multiple constructors:
+\begin{minted}{Haskell}
+data Maybe a = Nothing | Just a
+Nothing :: forall a. Maybe a
+Just :: forall a. a -> Maybe a
+\end{minted}
+This datatype has two constructors: \inHS`Nothing`, a constructor with zero arguments, and \inHS`Just`, a constructor with one argument.
+
+Union types in Dhall allow anonymously creating this pattern with named fields, and a library provides \inHS`Variant` for PureScript which serves a similar purpose:
+\begin{minted}{Haskell}
+< Nothing | Just : a >
+\end{minted}
+\begin{minted}{Haskell}
+Variant ( Nothing :: Unit, Just :: a )
+\end{minted}
+
+One special type in PureScript is \inHS`Map`, and its companions \inHS`SemigroupMap` and \inHS`Set`.
+Internally they are implemented as balanced trees, but this representation is not visible to the user: all the matters is that they are sorted collections indexed on a fixed type of key.
+Mathematically they can be viewed as partial functions from the key type to the value type.
+The semigroup operation on \inHS`SemigroupMap` appends two maps in the obvious keywise manner: if the key is present in both, append the two values, otherwise take the single value that is present.
+
+\section{Semilattices}
+
+While groups are optimal for capturing the symmetries of various systems, semilattices are ideal for tabulating knowledge obtained incrementally.
+Therefore, semilattices are one tool that regularly show up in type inference.
+
+Semilattices can be viewed from an algebraic perspective, as idempotent commutative monoids, and also from an order-theoretic perspective, as a partially-ordered set with finite joins -- that is, least upper bounds of finite sets.
+(Dually they can be thought of as having finite meets/greatest lower bounds, but we will solely consider semilattices as join-semilattices in this work.)
+
+\subsection{Monoids}
+
+Monoids are sets with one associative binary operation that has an identity.
+That is, they are semigroups with an identity, or groups without inverses.
+\begin{enumerate}
+\item Associativity:\\
+  \((xy)z = xyz = x(yz)\)
+\item Two-sided identity:\\
+  \(ex = x = xe\)
+\end{enumerate}
+
+Most monoids considered here additionally have the property that their identity is adjoined: the identity only factors trivially as \(e = ee\) (this is true for semilattices in particular, since if \(e\) factors as \(xy\), then \(x = xe = xxy = xy = e\) and likewise \(y = e\) by idempotence).
+This means these monoids are really semigroups reflected through the adjunction that freely adjoins an identity element.
+
+Monoids are ubiquitous in programming.
+For example, strings form a monoid under concatenation.
+But this is really an instance of a more general fact: lists form the \emph{free monoid}, and strings are abstractly just lists of characters.
+
+Natural numbers form monoids in several ways: under addition (with identity \(0\)), under maximum (also with identity \(0\)), under multiplication (with identity \(1\)), under \(\mathop{lcm}\) (also with identity \(1\)), and other operations as well.
+Note that these three operations are commutative, but only maximum and \(\mathop{lcm}\) are idempotent.
+This idempotency is the key to semilattices.
+
+Finite sets form the \emph{free semilattice}, with the monoid operation being set unions.
+They can be constructed by quotienting lists by commutativity and idempotence, or as a subtype by choosing an ordering and requiring that the underlying list appears in sorted order without duplicates.
+
+This is the key underlying reason why we often think of operations like maximum and \(\mathop{lcm}\) as operating on finite sets.
+
+So when asking how to keep track of information like constraints during typechecking, the most general answer will always be ``Freely, by tabulating what constraints have occurred in a finite set''.
+But there often is more structure to be noticed, and it can be factored into a more specific algebraic structure (carried in some datatype) that precisely captures how constraints interact.
+
+\subsection{Partial orders}
+
+Partial orders have the following axioms:
+\begin{enumerate}
+\item Reflexivity:\\
+  \(x \le x\)
+\item Transitivity:\\
+  If \(x \le y\) and \(y \le z\) then \(x \le z\).
+\item Antisymmetry:
+  If \(x \le y\) and \(y \le x\), then \(x = y\).
+\end{enumerate}
+
+From a commutative idempotent monoid, we can form a partial order by taking \(x \le y\) to be defined as \(xy = y\), which can intuitively thought as \(y\) absorbing \(x\) under the monoid operation.
+Transitivity and antisymmetry are immediate from the semigroup properties, and reflexivity comes from idempotence.
+The identity of the monoid becomes the least element under this ordering.
+This ordering additionally respects the monoid operation: if \(x \le y\) and \(u \le v\) then \(xu \le yv\) since \(xuyv = xyuv = yv\) by commutativity.
+
+\section{Abstract Syntax Trees}
+
+Abstract syntax trees are the bread and butter of computer science research.
+By thinking of syntax as a tree, the recursion patterns of algorithms (particularly typechecking) is clarified.
+
+All of the algorithms, such as typechecking and evaluation, are best thought of as operating on the abstract syntax.
+Substitution is particularly straightforward: other than the cases that mention variables, the rest of substitution is the obvious recusion down the syntax tree.
+
+\section{Variables}
+
+Variables are a big topic in programming language design, and this is compounded when formalizing programming languages.
+
+Variables are placeholders for values, so .
+
+Variables in the programming language.
+
+Formalizing variables in a rigorous way is a surprisingly hard issue.
+The main issue is resolving variables when there are multiple with the same name in scope.
+If one variable binding clobbers another already in scope, with no way to disambiguate, then the semantics of the program could drastically change!
+It can be responsible for subtle bugs in theory and implementation.
+
+Nevertheless, there are many known solutions, such as capture-avoiding substitution, which renames bound variables during the process of substitution, and de Bruijn indices, which replace variables with numbers that track levels of scope, thus allowing .
+We will gloss over the issue here, but in the Dhall standard it is formalized with variable shifting that combines the power of de Bruijn indices with the convenience of named variables.
+Adding this method of variable shifting onto existing rules is a straightforward process, since it mirrors the obvious structure of how variable contexts are already embedded in the rules.
+
+\subsection{Metavariables}
+
+The term ``metavariable'' is somewhat ambiguous:
+It could refer to variables in the metalanguage, like the placeholders for variable names, other syntax fragments, or complete expressions that are used in rules.
+However, this is not usually talked about, because we are not analyzing the metalanguage, we are employing it.
+
+What they usually refer to, then, is placeholders for undetermined structure.
+That is, they are implicitly existentially quantified and may have constraints placed on their value, potentially including an exact value being determined later.
+
+Because these metavariables are existentially quantified, with no particular scope nor explicit abstraction/instantiation rules, they are global variables.
+In order to support polymorphism, therefore, their scope must be contained.
+We will see rules for determining their scope in this framework of metavariables and constraints during type inference.
+
+\subsubsection{Implicit Metavariables and Elaboration}
+The goal is for the user to not have to supply universes and row types, since to produce the most general type, they could all be metavariables.
+However, users may want to specify more restrictive types -- if a definition does not need to be polymorphic and would produce more confusing errors, the user could specify a concrete universe level for it, also for efficiency reasons.
+
+\iffalse
+\section{Model Theory}
+
+Delicate dance of level-mixing.
+
+Note that there is an ordering induced by the monoid operation on the normal forms.
+This ordering will be very useful, in particular in obtaining normal forms for expressions impredicative-maximum, but it does not reveal everything about how two expressions relate.
+Also note that it is a partial order, since variables in the universe level expressions are not yet assigned to values -- while internally in the theory, levels would be totally ordered since they correspond to natural numbers (once variables are assigned values).
+\fi
+
 
 \chapter{Type Inference}
 \label{type-inf}
@@ -287,31 +511,60 @@ Background on monoids and semilattices since they are the main driver of informa
 Type theory rules are typically written in horizontal bar style, writing assumptions above the line that are required to deduce the judgment below the line.
 
 Most judgments in type theory take place in a context, traditionally denoted \(\Gamma\).
-This associates variables in scope with types, and sometimes values (for \inHS`let`-bound variables).
+This tracks variables in scope and associates them with their types, and sometimes values (for let-bound variables).
+Thus when examining the body of a \inHS`forall` or lambda term, the context is extended with the variable name and the type declared by the \inHS`forall` or lambda.
+And when examining the body of a \inHS`let` term, the context is extended with not only the variable name and type, but also its declaration value (and later we will add more information here to support polymorphism).
 
 The main judgment is denoted \(\Gamma \vdash t : T\) and reads ``term \(t\) has type \(T\) in context \(\Gamma\)''.
 
-In terms of computational interpretation, \(\Gamma\) and \(t\) are inputs to a function, and the result is the inferred type \(T\) or an error if no proof tree could be constructed for it.
+Judgments in this sense belong to a logical metatheory, but they may be given a computational interpretation by a type inference algorithm.
+In the computational interpretation, \(\Gamma\) and \(t\) are inputs to the algorithm, and the result is the inferred type \(T\) or an error if no proof tree could be constructed for it.
 
 Type inference usually satisfies particular nice properties.
-For example, if a piece of syntax typechecks in an environment, every sub-piece of syntax also typechecks in the corresponding environment.
+For example, if a piece of syntax typechecks in an environment, every sub-piece of syntax also typechecks in same environment, but extended with variables to reflect the deepening of scope.
+
 Another property, useful for implementation, is that each piece of syntax typically only has one rule that could apply to it, so there is no ambiguity.
+This is called syntax-directed typechecking.
 
 Besides type-theoretical judgments, there are other side-conditions that may appear as assumptions for judgments.
-Normally they involve closed terms that compute, so the assumptions are trivially checked immediately while applying the rule.
-The goal of this project is to show how these side-conditions can instead be deferred.
-Now type inference will produce constraints that need to be checked for consistency.
-In particular, the universe levels produce arithmetical constraints that are essential to ensuring termination of evaluation of programs.
+Normally they involve values that are static in the source code, so the assumptions are trivially checked immediately while applying the rule.
+
+The goal of this project is to show how these side-conditions can instead be deferred, with less of it being known statically and more being figured out during type inference.
+In doing so, the side-conditions need to be more tightly integrated with the presentation of the type inference judgments.
+Now type inference will produce constraints, and these constraints need to be tabulated and checked for consistency.
+In particular, universe levels will produce arithmetical constraints that are essential to ensuring termination of program evaluation, and row types will produce other kinds of constraints to ensure that when a record has its field accessed, that label definitely exists in the record (and with the right type).
 
 The unification judgment will be written \(A \equiv B \mapsto C\) for the unification of \(A\) and \(B\) resulting in a new unified term \(C\) (along with constraints to make them unify), and computationally this is a part of typechecking.
+
+
+\section{Intrinsic vs Extrinsic Typing}
+
+Each rule for type checking judgments can be viewed as an introduction rule for a formal deductive derivation.
+A typing derivation, then, is a tree of these judgments arranged in the appropriate way.
+
+There are two extremes: intrinsic typing and extrinsic typing.
+
+Intrinsic typing says that the syntax contains enough information about types that there is only one possible typing derivation for a particular syntax tree.
+For example, it is common to have lambda terms require a type for their argument.
+The role of type inference is then to verify that the details check out, and to find the unique type associated with the expression in the end.
+
+Extrinsic typing at the other extreme says that programs exist on their own, independent of types, and types are imposed on top of existing programs via formal typing derivations, which may now involve creativity and choices not written into the structure of the program!
+For example, an untyped lambda term like \inHS`\x -> x` can be compatible with many types, like \inHS`Natural -> Natural` or \inHS`Text -> Text`, since the program itself does not impose one choice of type on its argument and is consistent with all choices.
+% C.f. Computational Type Theory of Robert Harper.
+
+This project then starts from the intrinsic point of view, and weakens the static requirements of programs slightly to approximate the freedom of extrinsic typing, while still retaining the structure of the intrinsic.
+In particular, one goal is that once all constraints are satisfied, an intrinsically-typed syntax tree could still be produced.
 
 \section{Constraints}
 
 Now we represent constraints explicitly during type inference.
-The new judgment looks like \(\Gamma \vdash e : T \Leftarrow C_1\) and is read as ``In context \(\Gamma\), expression \(e\) is inferred to have type \(T\) once the constraints \(C_1\) are satisfied''.
-Algorithmically, \(\Gamma\) and \(e\) are the inputs to the type inference procedure and \(T\) \emph{and} \(C_1\) are the outputs.
-This might be surprising given an interpretation of the judgment as ``\(e\) has type \(T\) if \(C_1\) is satisfied''.
-But it is really making the claim ``\(e\) can \emph{only} have type \(T\), and that \emph{only} occurs when \(C_1\) is satisfied''.
+Constraints should be thought of as finite sets of \emph{not incompatible} atomic constraints.
+These atomic constraints will be constraints on universe levels (like \(u \le \max(v, 2)\)), on row types (like \(r_1 \wedgeonwedge r_2 = r_3\)), or a unification constraint between terms.
+
+The new judgment looks like \(\Gamma \vdash e : T \Leftarrow C\) and is read as ``In context \(\Gamma\), expression \(e\) is inferred to have type \(T\) once the constraints \(C\) are satisfied''.
+Algorithmically, \(\Gamma\) and \(e\) are the inputs to the type inference procedure and \(T\) \emph{and} \(C\) are the outputs.
+This might be surprising under an interpretation of the judgment as ``\(e\) has type \(T\) if \(C\) is satisfied''.
+But it is really making the claim ``\(e\) can \emph{only} have type \(T\), and that \emph{only} occurs when \(C\) is satisfied''.
 
 \bigskip
 \begin{mdframed}[style=Note]
@@ -320,14 +573,25 @@ This relates to a concept called principal typings.
 See the conclusion for more.
 \end{mdframed}
 
-The usual (three-place) type inference judgment could now be shorthand for inference that generates no constraints:
+%The usual (three-place) type inference judgment could now be shorthand for inference that generates no constraints:
 
+%\begin{displaymath}
+%\prftree[double]{\Gamma \vdash e : T \Leftarrow \emptyset}{\Gamma \vdash e : T}
+%\end{displaymath}
+
+Of course we will have judgments that are trivially true, returning the trivial constraint \(\emptyset\), like the following:
 \begin{displaymath}
-\prftree[double]{\Gamma \vdash e : T \Leftarrow \emptyset}{\Gamma \vdash e : T}
+\prftree{\Gamma \vdash \inHS`0` : \inHS`Natural` \Leftarrow \emptyset}
+\end{displaymath}
+Other judgments will require combining the constraints produced, under constraint union:
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : \inHS`Text` \Leftarrow C_1}{\Gamma \vdash e_2 : \inHS`Text` \Leftarrow C_2}{\Gamma \vdash \inHS`[`e_1\inHS`,` e_2\inHS`]` : \inHS`List Text` \Leftarrow C_1 \cup C_2}
 \end{displaymath}
 
 Note that we only want to mention constraints that are satisfiable (or not known to be unsatisfiable!).
-That is, we want type inference to stop on \inHS`assert : 2 + 2 === 5` instead of continuing with unsatisfiable constraints.
+That is, we want type inference to stop on \inHS`assert : 2 + 2 === 5` instead of continuing with the unsatisfiable unification constraint \(\inHS`2 + 2` \equiv \inHS`5`\).
+So every time we mention constraints in a judgment, there is an implicit check that they are still satisfiable.
+(Unfortunately, this is an undecidable problem in general, given equality of open terms is undecidable, so we will have to settle for ensuring they are \emph{not unsatisfiable}.)
 
 As written, the Dhall standard suggests inferring the type of the binding, and then substituting it in and inferring the type of the resulting expression:
 
@@ -340,7 +604,7 @@ However, in practice what most implementations do is to extend the context by in
 \prftree{\Gamma \vdash e_1 : T_1}{\Gamma, (x \coloneq e_1 : T_1) \vdash e_2 : T_2}{\Gamma \vdash \inHS`let`\ x\ \inHS`=`\ e_1\ \inHS`in`\ e_2 : T_2[x \coloneq e_1]}
 \end{displaymath}
 Notice that this requires the substitution be performed in the output type now, but this is generally less work -- in particular, for value-level variables that do not occur in the type!
-Maybe the output substitution isn't necessary if the type judgment is well-crafted.
+Maybe the output substitution isn't necessary if the type judgment is well-crafted, i.e. producing a normalized type, but it would still require shifting to keep track of variables.
 
 \begin{mdframed}[style=Note]
 Under lazy evaluation, if the variable \(x\) is never used, it will not be evaluated.
@@ -355,22 +619,19 @@ Third, it also makes error messages more unpredictable: the error would be defer
 
 
 \subsection{Polymorphism}
-These judgments do not get us polymorphism yet, though, because the metavariables are global.
+These judgments do not get us polymorphism yet, though, because metavariables are global.
 Instead, we need to track what metavariables to generalize over, and then instantiate them at use sites.
 
-There are two ways to do this, corresponding to the two styles of \inHS`let`-inference above:
-If we are doing inference on the substituted expression \(e_2[x \coloneq e_2]\), we can simply make sure that the metavariables are generalized for each instantiation, which should be direct (once we are sure what metavariables to generalize).
+There are two ways to do this, corresponding to the two styles of let-inference above:
+If we are doing inference on the substituted expression \(e_2[x \coloneq e_1]\), we can simply make sure that the metavariables are generalized for each instantiation, which should be direct (once we are sure what metavariables to generalize).
 The second style requires a bit more work, but it amounts to keeping track of the unresolved constraints on the generalized metavariables, and then generalizing.
 
 We will prefer the second style for the same reasons: the inference work is memo\"ized, and the instantiating work is substantially smaller.
 
-We can probably get by with ``guessing'' what metavariables occur: the ones that occur but aren't present earlier in context.
+For now, we will only make let-bound variables polymorphic.
+Higher-order polymorphism, with polymorphic function arguments, will be more difficult (and less clear if it is consistent).
 
-Maybe we want to discharge hidden variables from constraints.
-Should be possible?
-
-In fact, this observation leads us to the observation that we want to keep a whole type inference constraint in context:
-
+In order to do so, we want to keep a whole type inference constraint in context:
 \begin{displaymath}
 \prftree{\Gamma \vdash e_1 : T_1 \Leftarrow C_1}{\Gamma, (x \coloneq e_1 : T_1 \Leftarrow C_1) \vdash e_2 : T_2 \Leftarrow C_2}{\Gamma \vdash \inHS`let`\ x\ \inHS`=`\ e_1\ \inHS`in`\ e_2 : T_2[x \coloneq e_1] \Leftarrow C_1 \cup C_2}
 \end{displaymath}
@@ -379,15 +640,35 @@ The magic happens in the variable judgment:
 \begin{displaymath}
 \prftree{vs\text{\ to generalize over with corresponding fresh\ } us}{\Gamma, (x \coloneq e : T \Leftarrow C), \Delta \vdash x : T[vs \coloneq us] \Leftarrow C[vs \coloneq us]}
 \end{displaymath}
-When we see a variable, we look it up in the context, complete with its type and constraints, and then we reinstantiate the generalized variables while copying the type and constraint.
+When we see a variable, we look it up in the context, complete with its type and constraints, and then we reinstantiate the generalizable metavariables while copying the type and constraint.
 
 \begin{mdframed}[style=Note]
 We may need to inspect \(e\) to catch some metavariables to be generalized in the constraints, but maybe they should be already discarded.
 That is, if there are metavariables that occur in \(e\) but not \(T\), we should try to eliminate them from the constraints.
 \end{mdframed}
 
+How do we know what metavariables to generalize over?
+By examining the context and tracking which metavariables already occurred in lambda-bound places.
+
+The distinction is that variables that are let-bound never introduce new bound metavariables, since the metavariables they would introduce are instead generalized over; but lambda-bound variables do bind their metavariables, since we do not yet support polymorphism for them.
+\begin{displaymath}
+\prftree{metavariables(e) = \{\dots\}}
+\end{displaymath}
+\begin{displaymath}
+\prftree{bound(\Gamma, x : T) = bound(\Gamma) \cup metavariables(T)}
+\qquad
+\prftree{bound(\Gamma, x \coloneq e : T \Leftarrow C) = bound(\Gamma)}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{vs \coloneq metavariables(e : T) \setminus bound(\Gamma)}{us \coloneq fresh(vs)}{\Gamma, (x \coloneq e : T \Leftarrow C), \Delta \vdash x : T[vs \coloneq us] \Leftarrow C[vs \coloneq us]}
+\end{displaymath}
+
+
 \chapter{Universes}
 \label{universes}
+
+% MOTIVATE IMPREDICATIVITY
 
 How do you study something in type theory?
 By giving it a type!
@@ -395,34 +676,43 @@ Universes are a way to give types to types, and they would be uninteresting if n
 
 The na\"ive way of doing it would be to say that all types live in a single universe, call it \inHS`Type`.
 This universe is in fact a type, so it must be the case that \inHS`Type : Type`.
-However, this ``\inHS`Type`-in-\inHS`Type`'' rule makes most type theories inconsistent, due to results such as Girard's paradox and its simplification as Hurkens' paradox.
+However, this ``\inHS`Type`-in-\inHS`Type`'' rule makes most type theories inconsistent, due to results such as Girard's paradox and its simplification as Hurkens' paradox~\cite{10.5555/645892.671442}.
 These are in some ways analogous to Russell's paradox: just like there can be no set of all sets in a consistent set theory, there can be no type of all types in a consistent type theory.
 In type theory, the inconsistencies are visible as terms that can be ascribed types, but do not reduce to any normal form in a finite number of steps.
+This particular type of inconsistency was exhibited in an issue on the Dhall respository when impredicativity was allowed for \emph{two} universes, which is enough to exhibit the above paradoxes, but the issue was quickly fixed~\cite{ferrai_2018}.
 
 The solution, therefore, is to stratify types into levels.
-Only \emph{small} types can live in \inHS`Type` while \inHS`Type` itself (and other ``large'' types) will live in \inHS`Kind` and \inHS`Kind` lives in \inHS`Sort`, and so on.
+Only \emph{small} types can live in \inHS`Type`, while \inHS`Type` itself (and other ``large'' types) will live in \inHS`Kind` and \inHS`Kind` lives in \inHS`Sort`, and so on.
 In fact it is customary to assume an infinite hierarchy of universes indexed by natural numbers, where \inHS`Type = Universe 0` denotes the smallest, then \inHS`Kind = Universe 1`,\enskip\inHS`Sort = Universe 2`, and the rest are unnamed but exist as \inHS`Universe 3`,\enskip\inHS`Universe 4`, and so on.
 
 However, these universe levels cannot be understood as natural numbers internal to the type theory.
-They must be accorded special status, because abstracting over them works differently to normal numbers and also because they should not support all operations that natural numbers do.
+They must be accorded special status, because abstracting over them works differently to normal values and also because they should not support all operations that natural numbers do.
 In fact, four operations suffice as we will see, plus a fifth to obtain a normal form.
+
+It is conventional to elide concrete universe levels from programs, in so-called ``typical ambiguity'', and instead assume that there is a consistent assignment of levels that makes it work.
+This is the role of metavariables here, to keep track of universes with various constraints placed on them during typechecking.
+The question is how to design a type theory to check consistency of universes in as much generality as possible, and much has been written about this problem, including papers on similar type theories~\cite{HARPER1991107}.
+Here we just dive straight in to the arithmetic and give explicit description of most of the details necessary to check universe constraints.
 
 \section{The Algebra of Universe Levels}
 \label{alg-uni-lvl}
 
 The actual algebraic language that expresses universe levels only has four operations: nullary zero, unary successor, and two binary operations maximum and impredicative-maximum.
+% TODO: fixed? constant?
 Thus this language only allows addition by fixed natural numbers: adding two universe levels together is not meaningful.
 
 There are actually three related languages under discussion here: \(\mathcal{L}\), the language of universe levels with only maximum, no impredicative maximum; \(\mathcal{L}_{\imax}\), extended with the impredicative maximum; and \(\mathcal{L}_{\ifop}\), with an alternative binary operator that is used to simplify normal forms for impredicative maximum but does not appear directly in the typing judgments.
 
 Obviously we will use natural numbers to denote the appropriate sequence of successors and zero, and addition by a natural number represents the appropriate sequence of successors.
+The issue of variables in the metatheory already rears its head here: by writing \(u+k\) we mean that \(u\) is a variable (or possibly a whole universe level expression), and \(k\) is a fixed natural number to shift \(u\) by.
 
-For clarity, we will sometimes denote maximum of \(u\) and \(v\) by \(\max(u, v)\) and their impredicative-maximum by \(\imax(u; v)\), but often we will leave the function labels off and treat the comma and semicolon as binary operators, with the comma having higher precedence.
+For clarity, we will usually denote maximum of \(u\) and \(v\) by \(\max(u, v)\) and their impredicative-maximum by \(\imax(u; v)\), but sometimes we will leave the function labels off and treat the comma and semicolon as binary operators, with the comma having higher precedence.
 Obviously the ordinary maximum will be associative, commutative, idempotent, with identity \(0\), so there is no disambiguation required.
-The impredicative maximum, however, is not associative or commutative, only idempotent, and so by convention it will be regarded as left-associative.
+The impredicative maximum, however, is neither associative nor commutative, only idempotent, and so by convention it will be regarded as left-associative.
 That is, \((u, v; x, y)\) reads as \(\imax(\max(u, v); \max(x, y))\) and \((u; v; w)\) as \(\imax(\imax(u; v); w)\).
 
 We define \(u \le v\) by \(\max(u, v) = v\) as is standard.
+% Note that this statement is actually true at two levels, which is not generally the case:
 
 Axioms:
 \label{alg-uni-laws}
@@ -457,7 +747,7 @@ Axioms:
 \end{enumerate}
 \end{enumerate}
 
-Deductions:
+Some key consequences derived from the above fundamental axioms:
 \label{alg-uni-laws-more}
 \begin{enumerate}
 \item \(0 \le u\)
@@ -468,62 +758,77 @@ Deductions:
 \item \(\imax(u, \imax(v, w)) = \imax(\max(u, v); w)\)
 \end{enumerate}
 
-A model is an assignment of variables to natural numbers.
+In the following, when we speak of a ``model'', we mean an assignment of variables to natural numbers.
+The set of all models is the space which gets carved out by constraints: certain models are compatible with some constraints while others are not.
+In particular, the challenge is to narrow down .
 
-\section{Universe Levels in Practice}
+\section{Universe Levels in Judgments}
 \label{uni-lvl-prac}
 
-Constraints on universe levels will appear above the line, as with other assumptions.
-This is mainly to keep the type inference judgment clean, as they properly are treated as \emph{outputs} of type inference.
-During this model of type inference, instead of checking constraints immediately, they are instead accumulated in state (like a \inHS`Writer` monad) and checked for satisfiability throughout the process but not necessarily discharged like normal assumptions.
-An error should occur as soon as inconsistent constraints occur, but type inference may still proceed.
+Here we go over how the universe levels are used in judgments.
+
+Of course the successor operation, as mentioned above, is used to find the type of a universe, and the zero is used for types like \inHS`Natural` and \inHS`Text` that automatically live in the lowest universe.
+The maximum operation is used to find a common universe that contains two (or more) types, particularly in constructions like record and union types.
+
+The impredicative-maximum is used to determine what universe function types live in.
+
+% Constraints on universe levels will appear above the line, as with other assumptions.
+% This is mainly to keep the type inference judgment clean, as they properly are treated as \emph{outputs} of type inference.
+% During this model of type inference, instead of checking constraints immediately, they are instead accumulated in state (like a \inHS`Writer` monad) and checked for satisfiability throughout the process but not necessarily discharged like normal assumptions.
+% An error should occur as soon as inconsistent constraints occur, but type inference may still proceed.
 
 Here is how the universe level constraints come up during type inference:
 
 Universes themselves live in the next highest universe:
 \begin{displaymath}
-\prftree{\Gamma \vdash \texttt{Universe}_u : \texttt{Universe}_{(u+1)}}
+\prftree{\Gamma \vdash \inHS`Universe`\ u : \inHS`Universe`\ {(u+1)} \Leftarrow \emptyset}
 \end{displaymath}
 
 Function types live in the impredicative-maximum of their input and output universes:
 \begin{displaymath}
 \prftree
-  {\Gamma_0 \vdash A : \texttt{Universe}_u}
-  {\Gamma_0, x : A \vdash B : \texttt{Universe}_v}
-  {\Gamma_0 \vdash \forall (x : A) \to B : \texttt{Universe}_{\imax(u; v)}}
+  {\Gamma \vdash T_1 : \inHS`Universe`\ u \Leftarrow C_1}
+  {\Gamma, x : T_1 \vdash T_2 : \inHS`Universe`\ v \Leftarrow C_2}
+  {\Gamma \vdash (\forall (x : T_1) \to T_2) : \inHS`Universe`\ {\imax(u; v)} \Leftarrow C_1 \cup C_2}
 \end{displaymath}
 That is, functions with a codomain in the lowest universe live in the lowest universe, regardless of what universe the domain is in.
+
+Impredicativity is particularly useful in programming because it allows polymorphic functions to remain in the lowest universe, if they return data in the lowest universe.
+In particular, custom recursive types (analogous to the builtin \inHS`List`) require an encoding with polymorphic functions that quantify over types (e.g. B\"ohm--Berrarducci encoding), and impredicativity allows this to live in the lowest universe (assuming all of the data does).
+Most importantly, it still produces a consistent logic system and terminating programming language, though some have philosophical objections to it.
 
 The obvious rules hold for record types, union types, and the like.
 In particular, these rules take the maximum of levels of their arguments.
 
 A common additional rule is the universe cumulativity rule, which says that any type in a particular universe also lives in all larger universes:
 \begin{displaymath}
-\prftree{\Gamma \vdash T : \texttt{Universe}_u}{u \le v}{\Gamma \vdash T : \texttt{Universe}_v}
+\prftree{\Gamma \vdash T : \inHS`Universe`\ u}{u \le v}{\Gamma \vdash T : \inHS`Universe`\ v}
+\end{displaymath}
+As stated, it means that terms no longer have a unique type and requires generating fresh variables for universe levels.
+Instead, a subsumption rule is incorporated in the appropriate places to emulate the cumulativity.
+This is because the type information is propagated anyways.
+\begin{displaymath}
+\prftree{\inHS`Universe`\ u \subsumedBy \inHS`Universe`\ v \Leftarrow \{u \le v\}}
 \end{displaymath}
 \begin{displaymath}
-\prftree{u \le v}{\texttt{Universe}_u \subsumedBy \texttt{Universe}_v}
+\prftree{A_2 \subsumedBy A_1 \Leftarrow C_1}{B_1 \subsumedBy B_2 \Leftarrow C_2}{\forall(x : A_1) \to B_1 \subsumedBy \forall(x : A_2) \to B_2 \Leftarrow C_1 \cup C_2}
 \end{displaymath}
-\begin{displaymath}
-\prftree{A_2 \subsumedBy A_1}{B_1 \subsumedBy B_2}{\forall(x : A_1) \to B_1 \subsumedBy \forall(x : A_2) \to B_2}
-\end{displaymath}
-This rule is not implemented yet.
-As stated, it means that terms no longer have a unique type and requires coming up with fresh variables for universe levels.
 
-For now, the only place where constraints occur is during unification, and thus they are necessarily equality constraints.
+The unification rule produces an equality constraint:
 \begin{displaymath}
-\prftree{u \equiv v \mapsto w}{\texttt{Universe}_u \equiv \texttt{Universe}_v \mapsto \texttt{Universe}_w}
+\prftree{u \equiv v \mapsto w}{\inHS`Universe`\ u \equiv \inHS`Universe`\ v \mapsto \inHS`Universe`\ w}
 \end{displaymath}
 Because \(u \equiv v\) emits as a side-condition, there's no specific expression that denotes \(w\), so we just take \(w = \max(u,v)\) as the most symmetric result, though there should be no difference returning either \(u\) or \(v\) instead.
 
+The subsumption rule acts a lot like the unification rule in that it ensures the two types have similar structure overall, but incorporates an inequality constraint on the universe levels at the leaves according to the variance of the judgment.
+
+
 Besides cumulativity, the big challenge is polymorphism: letting the same definitions be instantiated at various universes.
-For built-in functions (e.g. \inHS`Natural/fold`) this is easy enough to postulate in the type theory (again, it requires fresh variables for universe levels), but extending this to \inHS`let`-bound user functions is more work, and function arguments even more so (i.e. higher-order polymorphism).
+For built-in functions (e.g. \inHS`Natural/fold`) this is easy enough to postulate in the type theory (again, it requires fresh variables for universe levels), but extending this to let-bound user functions is more work, and function arguments even more so (i.e. higher-order polymorphism).
+Cumulativity takes care of some examples where polymorphism would ordinarily be required.
 
 \section{Normal Form for Universe Levels}
 \label{nf-uni-lvl}
-
-Proposed normal form. Formal presentation as a rewrite system to get to the normal form.
-
 First we introduce normal forms for the three-operation language without \(\imax\), then we extend it to a normal form for the full language.
 
 \subsection{Normal Form Without Impredicative Maximum}
@@ -532,27 +837,27 @@ The normal form for \(\mathcal{L}\) is \(\max(u_1 + k_1, \dots, u_n + k_n, c)\),
 This is clearly closed under the operations in \(\mathcal{L}\), since \(\max\) is associative, commutative, and idempotent, and successor distributes across it.
 The PureScript datatype that represents the normal form is as follows:
 \begin{minted}{haskell}
-data Tail = Tail (SemigroupMap String (Max Int)) (Max Int)
+data UnivMax = UnivMax (SemigroupMap String (Max Int)) (Max Int)
 \end{minted}
 With this setup, taking the maximum is clearly just the obvious semigroup append operation.
 
 There are some details to worry about here, though.
 The first is the use of integers instead of natural numbers:
-for one it is easier to work with in PureScript due to built-in support,
+for one it is easier to work with integers in PureScript due to built-in support,
 and later, when subtracting constants from expressions based on their relationships,
-it will be convenient to temporarily allow negative integers to appear in constraints, although in the global picture nothing will actually be negative: no variables and no expressions.
+it will be convenient to temporarily allow negative integers to appear in constraints, although in the global picture nothing will actually be negative: no variables will be assigned negative values and no expressions will evaluate to negative values.
 Certainly it will be the case that all the inputs are nonnegative integers, and this can be enforced syntactically when parsing programs.
 
-\begin{mdframed}[style=TODO]
-Will variables only appear in the context subtracted by an amount they are known to be greater than or equal to?
-\end{mdframed}
+%\begin{mdframed}[style=TODO]
+%Will variables only appear in the context subtracted by an amount they are known to be greater than or equal to?
+%\end{mdframed}
 
 And as was discussed in the introduction, there is no way in PureScript to enforce the restriction corresponding to \(c \ge k_1, \dots, k_n\).
 This restriction comes from the fact that variables (and all expressions) are nonnegative.
-So instead, there is a normalization function that sets \(c\prime = \max(c, k_1, \dots, k_n, 0)\).
+So instead, there is a normalization function that sets \(c^\prime = \max(c, k_1, \dots, k_n, 0)\).
 \begin{minted}{haskell}
-normalizeTail :: Tail -> Tail
-normalizeTail (Tail us u) = Tail us
+normalizeUnivMax :: UnivMax -> UnivMax
+normalizeUnivMax (UnivMax us u) = UnivMax us
   (fold1 (NonEmpty u us) <> Max zero)
 \end{minted}
 Thus we see that an expression input as \(\max(u+1, v+3)\) has a normal form of \(\max(u+1, v+3, 3)\), just by applying the nonnegativity axiom, \(\max(u+1, v+3) \ge v+3 \ge 3\).
@@ -561,87 +866,188 @@ One nice property of this normalization is that appending two normalized express
 \subsection{Normal Form With Impredicative Maximum}
 
 Instead of a normal form for \(\mathcal{L}_{\imax}\) (which would require making somewhat arbitrary choices), expressions are written in the larger language \(\mathcal{L}_{\ifop}\) which admits nice normal forms.
-One example of why this is crucial is \((c; b; a), (c; a; b) = ((c; b), b; a), a, ((c; a), a; b), b = (c; b; a), a, b = (c; a; b), a, b\).
+One example of why this is crucial is that the expression \((c; b; a), (c; a; b) = ((c; b), b; a), a, ((c; a), a; b), b\) could have two normal forms that are equivalent up to choice of order on the variables: \((c; b; a), a, b = (c; a; b), a, b\).
 One of the two has to win in this case, but \(\imax\) does not commute like that: only \(\ifop\) does.
 
 In particular, \(\mathcal{L}_{\ifop}\) has normal forms that are the maximum of cases with values from \(\mathcal{L}\), satisfying some normality properties.
-Syntactically an expression in normal form looks like\\ \(\max(\ifop(a_1; b_{1,1}; \dots; b_{1,m_1}); \dots; \ifop(a_n; b_{1,1}; \dots; b_{1,m_n}))\) where \(a_i\) are normal forms for \(\mathcal{L}\) and \(b_{i,j}\) occur in sorted order, no duplicates.
-This is more clearly expressed in the PureScript type:
+Syntactically an expression in normal form looks like\\ \(\max(\ifop(a_1; b_{1,1}; \dots; b_{1,m_1}); \dots; \ifop(a_n; b_{1,1}; \dots; b_{1,m_n}))\) where \(a_i\) are normal forms for \(\mathcal{L}\) and \(b_{i,j}\) occur in sorted order, no duplicates, plus some other conditions on how the cases interact.
+However, this is more clearly expressed in the PureScript type:
 \begin{minted}{haskell}
-newtype Const = Universes (SemigroupMap (Set String) Tail)
+newtype UnivIMax = UnivIMax (SemigroupMap (Set String) UnivMax)
 \end{minted}
-Again, the obvious semigroup operation represents taking the maximum of two expressions, though it may not quite be in normal form anymore.
+Again, the obvious semigroup operation represents taking the maximum of two expressions, though it may not be in normal form anymore even if its operands are.
 
-Mathematically, this should be seen as a monotonic function from hypotheticals (sets of variables) to the above \(\mathcal{L}\) normal form, and indeed comparing any two normal forms of this type essentially requires computing that function on the union of hypotheticals from both.
-However, for the purposes of a finite normal form, it is better to store the minimal amount of information to recover the function.
+Mathematically, this should be seen as a monotonic function from hypotheticals (sets of variables) to the above \(\mathcal{L}\) normal form.
+Indeed comparing any two normal forms of this type essentially requires computing that function at all the relevant hypotheticals.
+This PureScript function computes that by folding together all the hypotheticals that are included in the desired hypothetical:
+\begin{minted}{Haskell}
+foundAt :: Set String -> UnivIMax -> UnivMax
+foundAt vars (UnivIMax c) = withMinimumAt vars $
+  fromMaybe (UnivMax mempty (Max zero)) $
+    c # foldMapWithIndex \ks v ->
+      if Set.subset ks vars then Just v else mempty
+\end{minted}
 
+However, for the purposes of a finite normal form, it is better to store the \emph{minimal} amount of information to recover the function.
 So, along with the above conditions, there is the extra restriction that there is no redundancy: if one hypothetical is a subset of another, then whatever constraints are forced in the smaller (general) hypothetical should not be included in the larger (more specific) hypothetical.
-More on that later, but for example, \(\max(\ifop(u; v), u + 1, v)\) is not a normal form: the \(u\) in the hypothetical \(\{v\}\) is redundant, since \(u + 1\) already occurs at the hypothetical \(\emptyset\).
+More on that later, but for example, \(\max(\ifop(u; v), u + 1, v)\) is not a normal form: the \(u\) under the hypothetical \(\{v\}\) is redundant, since \(u + 1\) already occurs at the hypothetical \(\emptyset\).
 The correct normal form of that expression is simply \(\max(u+1, v)\).
+See \inHS`reduceBySelf` below for the logic implementing this.
 
-Again, this is a restriction that cannot be expressed in PureScript, but it lends itself to a normalization function:
+
+
+There are two additional details to take care of, relating to variables appearing under their own hypotheticals.
+
+The easier detail is exemplified by the two facts that \(x+3 = \max(3, x+3)\) but \(\imax(x+3; x) = \imax(\max(4, x+3); x)\).
+That is, under a hypothetical that includes \(\{v\}\), the variable \(v\) is (by definition) strictly positive, so the constant factor representing the minimum value needs to take that account.
+See \inHS`withMinimumAt` below for this step of normalization.
+
+The more subtle detail can be seen in \(\max(\imax(x+5; x), 6) = \max(\imax(x+5; x), 6, x+5) = \max(6, x+5)\), where the second step is handled by the first detail above (removing redundancy), but the first step requires a new approach.
+Whenever the variable appears in a hypothesis that also mentions it, it is added to the hypothesis that excludes it, shifted by the minimum of its observed shift and the constant factor at the reduced hypothesis.
+This preserves equality since there it will only be observed as zero anyways as the nonzero case is appropriately handled by the hypothesis that includes it.
+See \inHS`promoting` below for this step of normalization.
+
+Again, these conditions cannot be imposed on values within PureScript's system of datatypes, but they lend themselves to being expressed as a normalization function:
 \begin{minted}{haskell}
-normalizeConst :: Const -> Const
-normalizeConst (Universes uz) =
-  Universes uz' # reduceBySelf
-    where
-      uz' = map normalizeTail uz
-      normalizeTail (Tail us u) = Tail us
-        (fold1 (NonEmpty u us) <> Max zero)
-\end{minted}
-Unlike \inHS`normalizeTail`, however, \inHS`normalizeConst` is not preserved by the na\"ive semigroup operation, since redundancy may be introduced with the expressions in combination that was not present individually.
-However, most of the library works fine with un-normalized expressions.
+normalizeUnivIMax :: UnivIMax -> UnivIMax
+normalizeUnivIMax (UnivIMax uz) =
+  UnivIMax (mapWithIndex withMinimumAt uz) # promoting # reduceBySelf
 
-A normal form \(N\) in \(\mathcal{L}_{\ifop}\) is in \(\mathcal{L}_{\imax}\) exactly when for each \(\ifop(e; r_1; \dots; r_m)\) occurring in \(N\), there is some sequential ordering of \(r_1, \dots, r_n\) such that \(r_1 \le N\) and \(\ifop(r_2; r_1) \le N\) and so on until \(\ifop(r_3; r_2; r_1) \le N, \dots, \ifop(r_m; \dots; r_1) \le N\).
-This is simply the translation from \(\mathcal{L}_{\imax}\) to \(\mathcal{L}_{\ifop}\) of \(\imax(e; r_m; \dots; r_1) \le N\).
+withMinimumAt :: Set String -> UnivMax -> UnivMax
+withMinimumAt ks (UnivMax us u) = UnivMax us $
+  apply maybe append (Max zero <> u) $
+    us # foldMapWithIndex \k (Max v) ->
+      Just (Max (v + if Set.member k ks then 1 else 0))
+
+promoting :: UnivIMax -> UnivIMax
+promoting (UnivIMax uz) = UnivIMax $ append uz $
+  uz # foldMapWithIndex \ks (UnivMax us _) ->
+    us # foldMapWithIndex \k n ->
+      let ks' = Set.delete k ks in
+      if ks' == ks then mempty else
+      case foundAt ks' (UnivIMax uz) of
+        UnivMax _ n' ->
+          let n'' = min n' n in
+          SemigroupMap $ Map.singleton ks' $
+            UnivMax (SemigroupMap (Map.singleton k n'')) n''
+
+
+-- | Remove information that is implied already.
+-- | This is used for normalizing constants.
+reduceBy :: UnivMax -> UnivMax -> Maybe UnivMax
+reduceBy
+  (UnivMax (SemigroupMap source) (Max sv))
+  (UnivMax (SemigroupMap target) (Max tv)) =
+    let
+      target' = target # Map.mapMaybeWithKey \k v ->
+        case Map.lookup k source of
+          Just v2 | v2 >= v -> Nothing
+          _ -> Just v
+    in if Map.isEmpty target' && sv >= tv then Nothing
+      else Just (UnivMax (SemigroupMap target') (Max tv <> Max sv))
+
+-- | Reduce by itself.
+reduceBySelf :: UnivIMax -> UnivIMax
+reduceBySelf (UnivIMax (SemigroupMap source)) =
+  UnivIMax $ SemigroupMap $ source #
+    Map.mapMaybeWithKey \ks ->
+      reduceBy (foundBy ks (UnivIMax (SemigroupMap source)))
+\end{minted}
+Unlike \inHS`normalizeUnivMax`, however, \inHS`normalizeUnivIMax` is not preserved by the na\"ive semigroup operation, since redundancy may be introduced with the expressions in combination that was not present individually.
+% However, most of the library works fine with un-normalized expressions.
+
+A normal form \(N\) in \(\mathcal{L}_{\ifop}\) is in \(\mathcal{L}_{\imax}\) exactly when under each nontrivial hypothetical, the variables of that hypothetical are included.
+This can be characterized more directly in terms of the normal form.
 We will see that this property is maintained throughout, to ensure the normal form of \(\mathcal{L}_{\imax}\) is indeed closed.
+
+\subsubsection{Proof of Normal Forms}
+To show that we have normal forms for the respective languages, for two expressions with different normal forms, we need to demonstrate a model where they differ.
+
+For \(\mathcal{L}_{\max}\), the proof of normal form is simple:
+\begin{enumerate}
+\item
+  If the normal forms differ at a constant (for example, \(\max(x+1, 4)\) versus \(\max(x+1, 7)\)), because the normal form guarantees that those constants are greater than the shifts of the variables, a model witnessing their difference is found by simply setting all variables to zero.
+\item
+  If the normal forms differ at a variable, a model witnessing their difference is found by setting all variables to zero except the one they differ at, which can be set to the maximum of the constants appearing in the expressions. This makes it so that that variable dominates and the difference can be observed.
+  For example, for the expressions \(\max(x+3, 13)\) and \(\max(x+4, 13)\), they are the same for \(x \le 9\), but of course once \(x > 9\) the \(x+3\) and \(x+4\) terms will dominate, showing the difference, so the model \(x = 13\) certainly suffices.
+  Note that this model works even if the variable is ommitted from one side.
+\end{enumerate}
+
+For \(\mathcal{L}_{\imax} \subset \mathcal{L}_{\ifop}\), the proof of normal form is more intricate.
+
+The first step is to find an \emph{inclusion-minimal} hypothesis where they differ.
+This is to ensure that the difference corresponds to an actual difference in the functional realization.
+% (TODO: Is this even necessary?)
+
+The basic model is to set the variables in the hypothesis to \(1\), and other variables to \(0\), but there are three slightly different cases:
+\begin{enumerate}
+\item
+  If the normal forms differ at a constant, then the basic model works, in particular since the normalized constant factor takes into account the basic model!
+  (Recall that \(\imax(x+3; x)\) has the normal form \(\imax(\max(4, x+3); x)\).)
+\item
+  If the normal forms differ at a variable \emph{which appears in the hypothesis already}, the model simply needs that variable to dominate like above, which again can be found by setting it to be larger than the constants found within.
+  % TODO: FLESH OUT.
+\item
+  If the normal forms differ at a variable \emph{which is not mentioned in the hypothesis}, this variable can still be made to dominate, but it needs a little more explanation why this difference is still visible at the hypothesis including this new variable.
+  Two examples, \(\max(x+4, 8)\) versus \(\max(x+6, 8)\), or \(\max(x+4, 8)\) versus \(8\) (note that since we are not in case 1, the constants must be the same in both expressions!).
+  Thus the variable must be missing from the hypothesis with the new variable added, since otherwise normalization would move it to this smaller hypothesis.
+\end{enumerate}
+
+
 
 \subsection{Implementing Impredicative Maximum Through If}
 This is the part that shows that the language is closed for \(\mathcal{L}_{\ifop}\) and \(\mathcal{L}_{\imax}\).
 
 First we set up two helper functions.
 Then we calculate the combination of variables that have to be zero for the constant to be zero.
-Then we apply that to the existing constant.
+Note that this.
+
+An expression is zero when:
+\begin{enumerate}
+\item \(\imax(a; b) = 0\) iff \(b = 0\).
+\item \(\ifop(a; b) = 0\) iff \(b = 0\) or \(a = 0\).
+\item \(\max(a, b) = 0\) iff \(a = 0\) and \(b = 0\).
+\item \(0\) is always zero, \(a+1\) is never zero.
+\end{enumerate}
+
+Knowing the exact combination of variables that make an expression zero, it can be used to construct the appropriate expression out of \(\ifop\) operations.
+In particular, an expression \(e\) under the disjunction of some variables \(vs\) is expressed by \(\ifop(e; vs)\) (if one of those variables is zero, then that expression is), and conjunction is further expressed by taking the maximum of those expressions (if any of the conjuncts are nonzero, then the expression is has value \(e\)).
+Thus it is convenient to have this information in conjunctive normal form (CNF).
+The disjunctions are not even needed if the expression is in \(\mathcal{L}_{\imax}\), so a simpler implementation can be given for that special case, though it is omitted below.
 
 \begin{minted}{haskell}
-zeroableTail :: Tail -> Boolean
-zeroableTail (Tail us (Max u)) =
+zeroableUnivMax :: UnivMax -> Boolean
+zeroableUnivMax (UnivMax us (Max u)) =
   u <= zero && all (\(Max v) -> v <= zero) us
 
-skimTail :: Tail -> Maybe (Set String)
-skimTail t@(Tail (SemigroupMap us) _) =
-  if zeroableTail t then Just (Map.keys us) else Nothing
+skimUnivMax :: UnivMax -> Maybe (Set String)
+skimUnivMax t@(UnivMax (SemigroupMap us) _) =
+  if zeroableUnivMax t then Just (Map.keys us) else Nothing
 
 -- | The expression is only zero when combinations of variables are zero.
-peruse :: Const -> Set (Set String)
-peruse (Universes (SemigroupMap uz)) =
+peruse :: UnivIMax -> Set (Set String)
+peruse (UnivIMax (SemigroupMap uz)) =
   let
-    -- distr :: XNF -> YNF -> XNF
+    -- distr :: CNF -> DNF -> CNF
     distr k1s k2s =
       k2s # Set.map \k2 ->
         Set.insert k2 k1s
   in uz # foldMapWithIndex \k1 t ->
     -- k1 is DNF
-    -- skimTail is CNF
+    -- skimUnivMax is CNF
     -- we need CNF
-    case skimTail t of
+    case skimUnivMax t of
       Just k2 -> distr k2 k1
       Nothing -> Set.singleton k1
 
-ifop :: Const -> Const -> Const
-ifop (Universes (SemigroupMap us)) v
+ifop :: UnivIMax -> UnivIMax -> UnivIMax
+ifop (UnivIMax (SemigroupMap us)) v
   = fromMaybe uempty $
     peruse v # foldMap \ks ->
       us # foldMapWithIndex \ks' u ->
-        Just $ Universes $ SemigroupMap $ Map.singleton (ks <> ks') u
+        Just $ UnivIMax $ SemigroupMap $ Map.singleton (ks <> ks') u
 \end{minted}
 
-An expression is zero when:
-\(\imax(a; b) = 0\) iff \(b = 0\).
-\(\ifop(a; b) = 0\) iff \(b = 0\) or \(a = 0\).
-\(\max(a, b) = 0\) iff \(a = 0\) and \(b = 0\).
-\(a+1\) never.
-\(\imax(a; \imax(b; c)) = \imax(a; b; c) = (\ifop(a; b; c), \ifop(b; c), c)\)
 
 
 
@@ -665,33 +1071,36 @@ Besides equality of normal forms (that is, equality across all models), there ar
 The simplest relation is one is always strictly less than the other: e.g. \(\max(u,v) < \max(u+1,v+1)\).
 The next simplest relation is that one is always less than or equal to the other \emph{and} there are models where they are equal and arbitrarily large: e.g. \(\max(u,v) \lesssim \max(u,v+1)\).
 The third and final relation is that one is always less than or equal to the other, but equality is only achieved when both expressions are small: \(0 \leqslant \max(u,v)\).
+The bonus relation is \(u \bowtie v\), for expressions that are uncomparable: sometimes greater, sometimes less than, and necessarily arbitrarily large in either direction.
+
+\subsection{Relations Without Impredicative Maximum}
 
 These three relations can be wrapped up into a single semigroup that describes how two level expressions are related.
 The difference between the last two relations, then, is how they combine: the former is infectious, in that it takes priority over the strict inequality, while the latter is subsumed by it.
 
 \begin{minted}{haskell}
 data Rel
-  = EEQ -- equal (and arbitrarily large)
-  | ALT | AGT -- strict inequality
-  | HLE | HGE -- weak inequality, with arbitrarily large equality
-  | LLE | LGE -- weak inequality, but only equal at small values
-  | RUN -- uncomparable
+  = H_EQ -- equal (and arbitrarily large)
+  | S_LT | S_GT -- strict inequality
+  | H_LE | H_GE -- weak inequality, with arbitrarily large equality
+  | L_LE | L_GE -- weak inequality, but only equal at small values
+  | UNCOMP -- uncomparable
 \end{minted}
 
 This has a commutative, idempotent semigroup structure.
 A selection of key cases are shown below:
 \begin{minted}{haskell}
 instance semigroupRel :: Semigroup Rel where
-  append RUN _ = RUN
+  append UNCOMP _ = UNCOMP
 
-  append ALT EEQ = HLE
-  append HLE EEQ = HLE
-  append LLE EEQ = LLE
+  append S_LT H_EQ = H_LE
+  append H_LE H_EQ = H_LE
+  append L_LE H_EQ = L_LE
 
-  append HLE LLE = HLE
+  append H_LE L_LE = H_LE
 
-  append ALT HLE = HLE
-  append ALT LLE = ALT
+  append S_LT H_LE = H_LE
+  append S_LT L_LE = S_LT
 \end{minted}
 
 To get a monoid out of this, we just adjoin an identity.
@@ -702,127 +1111,219 @@ In fact, a commutative, idempotent semigroup is a semilattice.
 Adjoining the identity for the semigroup operation is the same as adjoining a bottom element for the semilattice, producing a bounded semilattice.
 These are the Hasse diagrams for \inHS`Rel` and \inHS`Maybe Rel`.
 
+\begin{figure}[h]
+  \caption{Hasse diagrams for \inHS`Rel` and \inHS`Maybe Rel`}
 \hfill\begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
-    \node (RUN) at (0,2.5) {\inHS`RUN`};
-    \node (HLE) at (1,2)  {\inHS`HLE`};
-    \node (HGE) at (-1,2) {\inHS`HGE`};
-    \node (ALT) at (1,1.0)  {\inHS`ALT`};
-    \node (EEQ) at (0,1.5) {\inHS`EEQ`};
-    \node (AGT) at (-1,1.0) {\inHS`AGT`};
-    \node (LLE) at (1,0.5)  {\inHS`LLE`};
-    \node (LGE) at (-1,0.5) {\inHS`LGE`};
+    \node (UNCOMP) at (0,2.5) {\inHS`UNCOMP` \(\bowtie\)};
+    \node (H_LE) at (1,2)  {\inHS`H_LE` \(\lesssim\)};
+    \node (H_GE) at (-1,2) {\inHS`H_GE` \(\gtrsim\)};
+    \node (S_LT) at (1,1.0)  {\inHS`S_LT` \(<\)};
+    \node (H_EQ) at (0,1.5) {\inHS`H_EQ` \(\eqsim\)};
+    \node (S_GT) at (-1,1.0) {\inHS`S_GT` \(>\)};
+    \node (L_LE) at (1,0.5)  {\inHS`L_LE` \(\leqslant\)};
+    \node (L_GE) at (-1,0.5) {\inHS`L_GE` \(\geqslant\)};
 
-    \draw [thick] (RUN) -- (HLE);
-    \draw [thick] (RUN) -- (HGE);
-    \draw [thick] (HLE) -- (ALT);
-    \draw [thick] (HGE) -- (AGT);
-    \draw [thick] (HLE) -- (EEQ);
-    \draw [thick] (HGE) -- (EEQ);
-    \draw [thick] (ALT) -- (LLE);
-    \draw [thick] (AGT) -- (LGE);
+    \draw [thick] (UNCOMP) -- (H_LE);
+    \draw [thick] (UNCOMP) -- (H_GE);
+    \draw [thick] (H_LE) -- (S_LT);
+    \draw [thick] (H_GE) -- (S_GT);
+    \draw [thick] (H_LE) -- (H_EQ);
+    \draw [thick] (H_GE) -- (H_EQ);
+    \draw [thick] (S_LT) -- (L_LE);
+    \draw [thick] (S_GT) -- (L_GE);
 \end{tikzpicture}\hfill\hfill
 \begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
-    \node (RUN) at (0,2.5) {\inHS`Just RUN`};
-    \node (HLE) at (1,2)  {\inHS`Just HLE`};
-    \node (HGE) at (-1,2) {\inHS`Just HGE`};
-    \node (ALT) at (1,1.0)  {\inHS`Just ALT`};
-    \node (EEQ) at (0,1.5) {\inHS`Just EEQ`};
-    \node (AGT) at (-1,1.0) {\inHS`Just AGT`};
-    \node (LLE) at (1,0.5)  {\inHS`Just LLE`};
-    \node (LGE) at (-1,0.5) {\inHS`Just LGE`};
-    \node (bot) at (0,0) {\inHS`Nothing`};
+    \node (UNCOMP) at (0,2.5) {\inHS`Just UNCOMP` \(\bowtie\)};
+    \node (H_LE) at (1,2)  {\inHS`Just H_LE` \(\lesssim\)};
+    \node (H_GE) at (-1,2) {\inHS`Just H_GE` \(\gtrsim\)};
+    \node (S_LT) at (1,1.0)  {\inHS`Just S_LT` \(<\)};
+    \node (H_EQ) at (0,1.5) {\inHS`Just H_EQ` \(\eqsim\)};
+    \node (S_GT) at (-1,1.0) {\inHS`Just S_GT` \(>\)};
+    \node (L_LE) at (1,0.5)  {\inHS`Just L_LE` \(\leqslant\)};
+    \node (L_GE) at (-1,0.5) {\inHS`Just L_GE` \(\geqslant\)};
+    \node (bot) at (0,0) {\inHS`Nothing` \(=_0\)};
 
-    \draw [thick] (RUN) -- (HLE);
-    \draw [thick] (RUN) -- (HGE);
-    \draw [thick] (HLE) -- (ALT);
-    \draw [thick] (HGE) -- (AGT);
-    \draw [thick] (HLE) -- (EEQ);
-    \draw [thick] (HGE) -- (EEQ);
-    \draw [thick] (ALT) -- (LLE);
-    \draw [thick] (AGT) -- (LGE);
-    \draw [thick] (RUN) -- (HGE);
-    \draw [thick] (bot) -- (LGE);
-    \draw [thick] (bot) -- (LLE);
-    \draw [thick] (bot) -- (EEQ);
+    \draw [thick] (UNCOMP) -- (H_LE);
+    \draw [thick] (UNCOMP) -- (H_GE);
+    \draw [thick] (H_LE) -- (S_LT);
+    \draw [thick] (H_GE) -- (S_GT);
+    \draw [thick] (H_LE) -- (H_EQ);
+    \draw [thick] (H_GE) -- (H_EQ);
+    \draw [thick] (S_LT) -- (L_LE);
+    \draw [thick] (S_GT) -- (L_GE);
+    \draw [thick] (UNCOMP) -- (H_GE);
+    \draw [thick] (bot) -- (L_GE);
+    \draw [thick] (bot) -- (L_LE);
+    \draw [thick] (bot) -- (H_EQ);
 \end{tikzpicture}\hfill\null
+\end{figure}
 
-% max(4,u) LLE max(4,u+1)
-% max(4,u) LLE max(6,u)
+% max(4,u) L_LE max(4,u+1)
+% max(4,u) L_LE max(6,u)
 
-For the \(\mathcal{L}\) normal form \inHS`Tail`, the expressions are compared variablewise and these results are combined together with the semigroup operation.
+For the \(\mathcal{L}\) normal form \inHS`UnivMax`, the expressions are compared variablewise and these results are combined together with the semilattice operation.
+There is one annoying detail: this information cannot be combined with the information from the constant using the same semilattice operation (which should be \inHS`Nothing`, \inHS`Just S_LT`, or \inHS`Just S_GT` as appropriate).
+It is almost correct, except for one small detail: on cases where the constants are equal but the rest of the expression is strictly comparable, as when comparing \(\max(x+4, 5)\) with \(\max(x, 5)\), the result would be a high inequality \inHS`H_LE` or \inHS`H_GE` instead of the expected low inequality \inHS`L_LE` or \inHS`L_GE`, since those two example expressions are only equal for \(x = 0, 1\) and not arbitrarily high.
+In fact, for the rest of this logic, the difference is not essential, but it is nice to maintain it.
+Thus we add this small check as a special case, since it goes against the monotonicity of the semilattice.
 
-For the \(\mathcal{L}_{\ifop}\) normal form \inHS`Const`, the expressions are compared for each relevant hypothetical and combined with \textbf{new} monoid operation.
-A new operation is needed because if two impredicative expressions can be equal at one hypothetical, they of course be equal overall, not matter if it is a low equality or a high equality.
-So in this new operation, \inHS`LGE` dominates \inHS`AGT` and \inHS`LLE` dominates \inHS`ALT` instead of the other way around.
-That is, the distinction between \inHS`LGE` and \inHS`HGE` is not so useful anymore (they are adjacent in the semilattice), but it might as well be kept around since the information is available!
+\begin{minted}{Haskell}
+compareUnivMax :: UnivMax -> UnivMax -> Maybe Rel
+compareUnivMax (UnivMax (SemigroupMap us1) u1) (UnivMax (SemigroupMap us2) u2) =
+  ucR $ fold (unionWithThese compRel us1 us2)
+  where
+    ucR = case u1 `compare` u2, _ of
+      EQ, v | u1 == Max zero -> Nothing <> v
+      EQ, Just AGT -> Just LGE
+      EQ, Just ALT -> Just LLE
+      EQ, v -> Nothing <> v
+      LT, v -> Just ALT <> v
+      GT, v -> Just AGT <> v
+    compRel = case _ of
+      This (Max a) -> Just (if a > 0 then AGT else LGE)
+      That (Max a) -> Just (if a > 0 then ALT else LLE)
+      Both a b -> Just case a `compare` b of
+        EQ -> EEQ
+        LT -> ALT
+        GT -> AGT
+\end{minted}
 
-\begin{mdframed}[style=TODO]
-It seems to work fine for \(\imax\), but it actually does not wholly work for \(\ifop\).
-For example, \(\ifop(y; x)\) compares to \(\ifop(y+1; x)\) as \inHS`HLE`, even though they are only equal at zero (since \(x\) does not contribute its values).
-Actually it has a bug for \(x\) versus \(\imax(x+1; x)\) where it returns \inHS`HLE` instead of \inHS`LLE`.
-So maybe it really should be collapsed \dots
-\end{mdframed}
+\subsection{Relations With Impredicative Maximum}
 
+For the \(\mathcal{L}_{\ifop}\) normal form \inHS`UnivIMax`, the expressions are compared for each relevant hypothetical and combined with \textbf{new} semilattice operation.
+A new operation is needed because if two impredicative expressions can be equal at one hypothetical, they of course can be equal overall, not matter if it is a low equality or a high equality.
+So in this new operation, \inHS`L_GE` dominates \inHS`S_GT` and \inHS`L_LE` dominates \inHS`S_LT` instead of the other way around.
+That is, the distinction between \inHS`L_GE` and \inHS`H_GE` is not so useful anymore (they are adjacent in the semilattice), but it might as well be kept around since the information is available!
+In addition there is a ``middle'' notion of equality \inHS`M_EQ` for when constants are equal in the empty hypothetical (this is somewhat analogous to the above discussion of promoting from \inHS`S_LT` to \inHS`L_LE` and \inHS`S_GT` to \inHS`L_GE`).
+
+This means that there are some annoying details, but the core of the algorithm is comparing the expressions hypothetical-by-hypothetical, and in fact it all fits into the semilattice structure this time.
+The first annoying detail is the aforementioned one about constants at the empty hypothetical being considered \inHS`Just M_EQ` instead of \inHS`Nothing`.
+The other is that a minor correction of the same type: if two expressions are being compared at hypothetical \(h\) \emph{and} at \(h \cup \{\ x\ \}\), then the comparison at the hypothetical \(h\) can discard the variable \(x\), since it will contribute zero at the smaller hypothetical and will be instead picked up at the larger one.
+This corrects some comparisons from \inHS`H_GE` to \inHS`L_GE` and \inHS`H_LE` to \inHS`L_LE`, such as when comparing \(\max(\ifop(x+2; x), x)\) and \(\max(\ifop(x+3; x), x)\), which are only equal when \(x = 0\), not at arbitrarily high values.
+Again, this is not a concern for correctness of the overall algorithm, where the difference between \inHS`H_GE` and \inHS`L_GE` is no longer relevant.
+
+%\begin{mdframed}[style=TODO]
+%It seems to work fine for \(\imax\), but it actually does not wholly work for \(\ifop\).
+%For example, \(\ifop(y; x)\) compares to \(\ifop(y+1; x)\) as \inHS`H_LE`, even though they are only equal at zero (since \(x\) does not contribute its values).
+%Actually it has a bug for \(x\) versus \(\imax(x+1; x)\) where it returns \inHS`H_LE` instead of \inHS`L_LE`.
+%So maybe it really should be collapsed \dots
+%\end{mdframed}
+
+\begin{minted}{Haskell}
+data IRel = IRel Rel | M_EQ
+\end{minted}
+
+\begin{figure}[h]
+  \caption{Hasse diagrams for \inHS`IRel` and \inHS`Maybe IRel`}
 \hfill\begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
-    \node (RUN) at (0,2.5) {\inHS`RUN`};
-    \node (HLE) at (1,2)  {\inHS`HLE`};
-    \node (HGE) at (-1,2) {\inHS`HGE`};
-    \node (ALT) at (1,1.0)  {\inHS`LLE`};
-    \node (EEQ) at (0,1.5) {\inHS`EEQ`};
-    \node (AGT) at (-1,1.0) {\inHS`LGE`};
-    \node (LLE) at (1,0.5)  {\inHS`ALT`};
-    \node (LGE) at (-1,0.5) {\inHS`AGT`};
+    \node (UNCOMP) at (0,2.5) {\inHS`UNCOMP` \(\bowtie\)};
+    \node (H_LE) at (1,2)  {\inHS`H_LE` \(\lesssim\)};
+    \node (H_GE) at (-1,2) {\inHS`H_GE` \(\gtrsim\)};
+    \node (S_LT) at (1,1.0)  {\inHS`L_LE` \(\leqslant\)};
+    \node (H_EQ) at (0,1.5) {\inHS`H_EQ` \(\eqsim\)};
+    \node (S_GT) at (-1,1.0) {\inHS`L_GE` \(\geqslant\)};
+    \node (L_LE) at (1,0.0)  {\inHS`S_LT` \(<\)};
+    \node (M_EQ) at (0,0.5) {\inHS`M_EQ` \(=\)};
+    \node (L_GE) at (-1,0.0) {\inHS`S_GT` \(>\)};
 
-    \draw [thick] (RUN) -- (HLE);
-    \draw [thick] (RUN) -- (HGE);
-    \draw [thick] (HLE) -- (ALT);
-    \draw [thick] (HGE) -- (AGT);
-    \draw [thick] (HLE) -- (EEQ);
-    \draw [thick] (HGE) -- (EEQ);
-    \draw [thick] (ALT) -- (LLE);
-    \draw [thick] (AGT) -- (LGE);
+    \draw [thick] (UNCOMP) -- (H_LE);
+    \draw [thick] (UNCOMP) -- (H_GE);
+    \draw [thick] (H_LE) -- (S_LT);
+    \draw [thick] (H_GE) -- (S_GT);
+    \draw [thick] (H_LE) -- (H_EQ);
+    \draw [thick] (H_GE) -- (H_EQ);
+    \draw [thick] (M_EQ) -- (S_GT);
+    \draw [thick] (M_EQ) -- (S_LT);
+    \draw [thick] (S_LT) -- (L_LE);
+    \draw [thick] (S_GT) -- (L_GE);
 \end{tikzpicture}\hfill\hfill
 \begin{tikzpicture}[scale=2,baseline=(current bounding box.north)]
-    \node (RUN) at (0,2.5) {\inHS`Just RUN`};
-    \node (HLE) at (1,2)  {\inHS`Just HLE`};
-    \node (HGE) at (-1,2) {\inHS`Just HGE`};
-    \node (ALT) at (1,1.0)  {\inHS`Just LLE`};
-    \node (EEQ) at (0,1.5) {\inHS`Just EEQ`};
-    \node (AGT) at (-1,1.0) {\inHS`Just LGE`};
-    \node (LLE) at (1,0.5)  {\inHS`Just ALT`};
-    \node (LGE) at (-1,0.5) {\inHS`Just AGT`};
-    \node (bot) at (0,0) {\inHS`Nothing`};
+    \node (UNCOMP) at (0,2.5) {\inHS`Just UNCOMP` \(\bowtie\)};
+    \node (H_LE) at (1,2)  {\inHS`Just H_LE` \(\lesssim\)};
+    \node (H_GE) at (-1,2) {\inHS`Just H_GE` \(\gtrsim\)};
+    \node (S_LT) at (1,1.0)  {\inHS`Just L_LE` \(\leqslant\)};
+    \node (H_EQ) at (0,1.5) {\inHS`Just H_EQ` \(\eqsim\)};
+    \node (S_GT) at (-1,1.0) {\inHS`Just L_GE` \(\geqslant\)};
+    \node (L_LE) at (1,0.0)  {\inHS`Just S_LT` \(<\)};
+    \node (M_EQ) at (0,0.5) {\inHS`Just M_EQ` \(=\)};
+    \node (L_GE) at (-1,0.0) {\inHS`Just S_GT` \(>\)};
+    \node (bot) at (0,-0.5) {\inHS`Nothing` \(=_0\)};
 
-    \draw [thick] (RUN) -- (HLE);
-    \draw [thick] (RUN) -- (HGE);
-    \draw [thick] (HLE) -- (ALT);
-    \draw [thick] (HGE) -- (AGT);
-    \draw [thick] (HLE) -- (EEQ);
-    \draw [thick] (HGE) -- (EEQ);
-    \draw [thick] (ALT) -- (LLE);
-    \draw [thick] (AGT) -- (LGE);
-    \draw [thick] (RUN) -- (HGE);
-    \draw [thick] (bot) -- (LGE);
-    \draw [thick] (bot) -- (LLE);
-    \draw [thick] (bot) -- (EEQ);
+    \draw [thick] (UNCOMP) -- (H_LE);
+    \draw [thick] (UNCOMP) -- (H_GE);
+    \draw [thick] (H_LE) -- (S_LT);
+    \draw [thick] (H_GE) -- (S_GT);
+    \draw [thick] (H_LE) -- (H_EQ);
+    \draw [thick] (H_GE) -- (H_EQ);
+    \draw [thick] (S_LT) -- (L_LE);
+    \draw [thick] (S_GT) -- (L_GE);
+    \draw [thick] (UNCOMP) -- (H_GE);
+    \draw [thick] (M_EQ) -- (S_GT);
+    \draw [thick] (M_EQ) -- (S_LT);
+    \draw [thick] (bot) -- (L_GE);
+    \draw [thick] (bot) -- (L_LE);
+    \draw [thick] (bot) -- (M_EQ);
+    \draw [thick] (H_EQ) -- (M_EQ);
 \end{tikzpicture}\hfill\null
+\end{figure}
+
+\begin{minted}{Haskell}
+compareUnivIMax :: UnivIMax -> UnivIMax -> Maybe IRel
+compareUnivIMax uz1' uz2' =
+  foldMap compRel hypotheses
+  where
+    Pair uz1 uz2 = normalizeUnivIMax <$> Pair uz1' uz2'
+    hypotheses =
+      -- always compare at the empty hypothetical
+      Set.singleton Set.empty
+      -- and at the hypotheticals from each expression
+      <> Map.keys (unwrap (unwrap uz1))
+      <> Map.keys (unwrap (unwrap uz2))
+    -- Don't include a variable in the comparison if we are going to
+    -- explicitly include it in the next hypothesis
+    -- (This will only correct some comparisons from H_LE to L_LE)
+    discarding ks (UnivMax (SemigroupMap us) u) =
+      UnivMax (SemigroupMap (Map.mapMaybeWithKey (discardKey ks) us)) u
+    discardKey ks k =
+      if not (Set.member k ks) && Set.member (Set.insert k ks) hypotheses
+        then \_ -> Nothing
+        else Just
+    compRel ks = liftAt ks $ compareUnivMax
+      (discarding ks (foundAt ks uz1))
+      (discarding ks (foundAt ks uz2))
+    liftAt ks Nothing | Set.isEmpty ks = Just M_EQ
+    liftAt _ v = IRel <$> v
+\end{minted}
 
 \subsection{Proofs}
+Here we present proofs that justify why these relations combine in the ways they do.
+Some parts of the proofs are trivial: for example, if \(x < y\) and \(a \le b\), then \(\max(x,a) \le \max(y,b)\) by monotonicity.
+This example goes halfway towards showing that \inHS`S_LT <> H_LE = H_LE` is a valid deduction: it covers the half that states ``if \(x\) is always less than \(y\) across models, and \(a\) is always less than or equal to \(b\), then \(\max(x,a)\) is always less than or equal to \(\max(y,b)\)''.
+The other half of the propositions is more tricky: ``if there are no models where \(x\) equals \(y\), but there are models where \(a\) equals \(b\) arbitrarily large, then there are models where \(\max(x,a)\) equals \(\max(y,b)\) arbitrarily large''.
+The ability to manipulate models like this is not true without additional assumptions: for example, it fails when \(x = u\) and \(y = u+1\) and \(a = \max(u, v)\) and \(b = \max(u, v+2)\), since the composite is \(\max(u, v)\) versus \(\max(u+1, v+2)\) which are strictly incomparable!
+
+What went wrong? The fact that the expressions had overlapping variables causes the comparison to behave unpredictably.
+As a result, simple assumption that \(x, y\) have disjoint variables from \(a, b\) makes the lattice structure work as it should.
+
+For example, this immediately shows that \inHS`UNCOMP` is the absorbing element of the semilattice: of \(x \bowtie y\) and \(x, y\) have disjoint variables from \(a, b\), then since \(x\) can be made arbitrarily large with \(y\) under it, and vice-versa with \(y\) arbitrarily large over \(x\), then \(\max(x, a) \bowtie \max(y, b)\) clearly holds since \(x\) can dominate \(a\) and \(y\) can dominate \(b\).
+
+\iffalse
 There is something weird happening here: comparing variable-wise is the only way to get the right answer, it certainly works, but doesn't fit into as nice of a framework.
-In particular, we cannot prove that \(x RUN y\) and \(a RUN b\) implies \(\max(x,a) RUN \max(y,b)\) because maybe the correct thing to do was to compare \(x\) with \(b\) and \(a\) with \(y\).
+In particular, we cannot prove that \(x \bowtie y\) and \(a \bowtie b\) implies \(\max(x,a) \bowtie \max(y,b)\) because maybe the correct thing to do was to compare \(x\) with \(b\) and \(a\) with \(y\).
 It's like we need to make a good-will best-effort attempt to extract information.
 Is it the minimum of all possible comparisons?
 Or just the non-uncomparable?
 Idk.
 Anyways.
+\fi
 
 Let \(x, y, a, b\) be universe expressions.
 Clearly if \(x \le y\) and \(a \le b\) then \(\max(x,a) \le \max(y,b)\), since \(\max(\max(x,a),\max(y,b)) = \max(\max(x,y),\max(a,b)) = \max(y,b)\).
 Similarly if \(x < y\) and \(a < b\) then \(\max(x,a) < \max(y,b)\).
-This justifies \inHS`ALT <> ALT = ALT`.
+This justifies \inHS`S_LT <> S_LT = S_LT`.
 
-Compare \(\max(v+k, e_1)\) and \(\max(v+k, e_2)\), where \(v\) does not occur in \(e_1\) or \(e_2\): add \inHS`EEQ` to comparing \(e_1\) and \(e_2\).
-Compare \(\max(v+k, e_1)\) and \(\max(v+k+m+1, e_2)\)  where \(v\) does not occur in \(e_1\) or \(e_2\): add \inHS`ALT` to comparing \(e_1\) and \(e_2\).
+Compare \(\max(v+k, e_1)\) and \(\max(v+k, e_2)\), where \(v\) does not occur in \(e_1\) or \(e_2\): add \inHS`H_EQ` to comparing \(e_1\) and \(e_2\).
+Compare \(\max(v+k, e_1)\) and \(\max(v+k+m+1, e_2)\)  where \(v\) does not occur in \(e_1\) or \(e_2\): add \inHS`S_LT` to comparing \(e_1\) and \(e_2\).
 
 
 The idea is that by comparing variable against variable, we don't run into conflicts in the models we want to produce.
@@ -831,37 +1332,36 @@ This is because we can always consider \(u\) to be larger that \(\max(e_1, e_2)\
 More exactly: to construct a model where \(\max(u, e_1) = \max(u, e_2)\) we set all the other variables to \(0\) and then take \(u = \max(e_1, e_2)\), where \(e_1\) and \(e_2\) can now be evaluated in the model with all the other variables being \(0\).
 
 \begin{mdframed}[style=Note]
-Normalization of \inHS`Tail` expressions helps, but is an orthogonal concern, merely enforcing that \(u \ge 0\) for all variables/expressions.
+Normalization of \inHS`UnivMax` expressions helps, but is an orthogonal concern, merely enforcing that \(u \ge 0\) for all variables/expressions.
 \end{mdframed}
 
 
 
 
 
-\section{Solving Universe Levels}
-\label{solv-uni-lvl}
+\section{Constraining Universe Levels}
 
 As type inference progresses, more constraints are added to universe levels that need to be checked for consistency.
 The actual state that is kept is a map from level expressions to level expressions, where each key-value pair represents the constraint that the key is \emph{greater than} the value.
 
 \begin{minted}{haskell}
-newtype GESolver = GESolver (Map Const Const)
+newtype GEConstraints = GEConstraints (Map UnivIMax UnivIMax)
 \end{minted}
 
 The reason for this choice is that the conjuction of \(u \ge v\) with \(u \ge w\) is \(u \ge \max(v, w)\).
-So having a single level expression for each upper bound suffices.
+So having a single level expression as a lower bound for each key suffices.
 
 The primary aspect of solving is just saturating all of the known relations between expressions, starting with reflexivity.
 For example, if \(u \ge v\) is a constraint and \(v \ge w\) is also a constraint, then \(u \ge w\) is a constraint, by transitivity.
 In practice, this means looking at all pairs of key-value pairs and adding \(k_i \ge v_j\) when \(v_i \ge k_j\).
 However, this does not capture the distributivity of successor.
-In general we want to adjust values by a constant that expresses when \(k_j\) becomes less than \(v_i\): for the largest \(c \in \mathbb{Z}\) such that \(v_i \ge k_j + c\), we instead add \(k_i \ge v_j + c\) from the chain \(k_i \ge v_i \ge k_j + c \ge v_j + c\).
+In general we want to adjust values by a constant that expresses when \(k_j\) becomes less than \(v_i\): for the largest \(c \in \mathbb{Z}\) such that \(v_i \ge k_j + c\), we can add \(k_i \ge v_j + c\) as a constraint, justified by the chain \(k_i \ge v_i \ge k_j + c \ge v_j + c\).
 
-If \(k_i < v_i\) for some pair, then an error must be thrown since it is no longer consistent (this is important for termination of the saturation algorithm too).
+If \(k_i < v_i\) is always true (across all models) for some pair, then an error must be thrown since it is no longer consistent (this is important for termination of the saturation algorithm too).
 In fact, more generally one wants to reduce the key if there are parts of \(v_i\) that are strictly greater than the corresponding parts of \(k_i\).
 For example, if there is the constraint \(\max(u, v) \ge \max(w, v+1)\), that is \(\max(u, v) \ge w\) and \(\max(u, v) \ge v+1\).
 But the latter can only be satisfied by \(u \ge v+1\), since \(v \ngeq v+1\).
-So \(\max(u, v) = u\) and the constraint can be reduced to the pair \(u \ge \max(w, v+1)\).
+So \(\max(u, v) = u\) in fact, thus the constraint can be reduced to the entry \(u \ge \max(w, v+1)\).
 
 Finally there are a couple wrinkles to be figured out with \(\imax\).
 For example, if \(\imax(u; v) > 0\) then \(\imax(u; v) \ge \max(u, v)\), but recall that it is encoded in \(\mathcal{L}_{\ifop}\) as \(\max(\ifop(u; v), v)\).
@@ -871,13 +1371,34 @@ However, by brute-force case analysis, it is possible to decide \(\mathcal{L}_{\
 So that is what we do.
 This involves looking for constraints of \(v+k \ge k+1\) (forcing \(v\) to be positive) or \(k \ge v+k\) (forcing \(v\) to be zero) in the context.
 
-\begin{minted}{haskell}
-data Known = Bounds { lower :: Max Int, upper :: Maybe (Min Int) }
-\end{minted}
+%\begin{minted}{haskell}
+%data Known = Bounds { lower :: Max Int, upper :: Maybe (Min Int) }
+%\end{minted}
 
-\section{Future Work}
-Better errors (to make it actually associative).
-Higher-order possibilities?
+\subsection{Consistency}
+The goal is for the algorithm to detect the collective consistency of the constraints.
+Using the ingredients discussed above (normal forms, seeing how levels compare across all models, and applying all known axioms to derive new constraints), this should be the case, but we only sketch the direction of a proof here, especially since the challenge is intertwined with verifying that the algorithm terminates, given that there is no fixed base case, simply looping until it generates no new constraints.
+
+The first direction is the most reasonable: since only known axioms are applied at each stage of the algorithm, it should be the case that no consistent set of constraints is ruled inconsistent.
+The other direction is a bit more tricky: did we cover all possible combinations of axioms and constraints, in order to detect the inconsistent sets of constraints?
+It is a bit tricky to identify where each axiom is used, since some are embedded in the very structure of the normal forms (like how successor distributes across maximum), or in the normalization functions (like how zero is the least element), and the rest do appear at various points during the constraint solving process.
+But there is reason to think that it is complete: all applicable axioms are used.
+
+There is a more direct way to show this too: we should be able to exhibit at least one model that satisfies the constraints, if it is consistent.
+We can do this relatively easily from a saturated constraint context, which essentially does the work of finding lower bounds for each variable.
+However, there are two challenges: the saturated constraint context will give lower bounds not for variables, but for expressions, and generally speaking, simply setting all variables to their lower bounds all at once will result in a model that does not satisfy the constraints anymore.
+
+The algorithm then is to look at the saturated constraint context and pick the smallest possible move towards a model that still makes progress.
+Then that change is added to the constraint context, which propagates the new information to create a new saturated context and step towards creating a model with all variables assigned.
+
+The smallest possible move consists of finding a constraint that has some variables on the left (preferring ones with the fewest variables) and some expression on the right, and then setting one of the variables to the smallest value that makes the left expression larger than the constant on the right.
+For example, if \(\max(u+2, v, 5) \ge \max(w, v+1, 8)\) is a constraint in the saturated context, then \(u = 6\) may be chosen (reducing it to \(\max(v, 8) \ge \max(w, v+1, 8)\) or \(v = 8\) may be chosen (reducing it to \(\max(u+2, 8) \ge \max(w, 8)\)).
+If no moves are found, the remaining variables are set to \(0\), since they only appear with upper bounds.
+
+The key claim is that if a claimed lower bound \(v = k\) is actually inconsistent with the other constraints, the saturated constraint context should have “detected” that and included a constraint equivalent to \(v \ge k+1\).
+If this is true, then the new constraint context will retain its consistency after every choice, and eventually terminate because the algorithm should make progress with each choice, even though more constraints may be added as a result each time during saturation.
+
+At least empirically these claims all seem true: in the test cases run, they all check out in that the algorithm terminates, correctly detects inconsistencies, accepts consistent contexts, and produces concrete models for those consistent contexts.
 
 
 
@@ -886,7 +1407,9 @@ Higher-order possibilities?
 \chapter{Row Types}
 Typechecking records and unions is one of the most complex parts of the Dhall standard already.
 Dhall mitigates some of this complexity by requiring that all records and unions have statically known shapes.
-Nevertheless, hiding behind the scenes are the shadows of a concept called row types that capture the shared shapes of records and unions.
+Nevertheless, hiding behind the scenes are the outlines of a concept called row types that capture the shared shapes of records and unions.
+Row types have been explored before, such as by Didier R\'{e}my who explores a similar system of constraints~\cite{10.5555/186677.186689}.
+Here we sketch what it would look like for the operators Dhall supports in particular.
 
 Row types consist of an unordered set of labels associated with types.
 ``Open'' rows have some known labels at the ``head'' along with a ``tail'' row of unknown fields.
@@ -921,19 +1444,15 @@ We write \(\{\ \dots\!r\ \}\) for the record type with fields specified by the r
 A record row \((\ l : t,\ \dots\!r\ )\) contains type \(t\) at a known label \(l\) in the head, and \(r\) as the tail.
 
 We write \(\langle\ \dots\!\mathit{rm}\ \rangle\) for the union type with fields specified by the union row \(\lcurvyangle\ \dots\!\mathit{rm}\ \rcurvyangle\).
-A union row $\lcurvyangle\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ \rcurvyangle$ contains an optional type \(\mathit{mt}\) at a known label \(l\) in the head, and \(r\) as the tail.
+A union row \(\lcurvyangle\ l \mathop{{:}{?}} \mathit{mt},\ \dots\!r\ \rcurvyangle\) contains an optional type \(\mathit{mt}\) at a known label \(l\) in the head, and \(r\) as the tail.
 That is, \(\lcurvyangle\ l,\ \dots\!r\ \rcurvyangle\) denotes the union row with a label \(l\) but no type associated to that label, and \(\lcurvyangle\ l : t,\ \dots\!r\ \rcurvyangle\) associates to it a type as usual.
 
 We write \(r \setminus l\) to denote the row \(r\) with label \(l\) removed.
 
-First we describe the constraint \(r_1 \wedgeonwedge r_2 = r_3\) for typing the recursive record merge operator:
+First we describe the constraint \(r_1 \wedgeonwedge r_2 = r_3\) for typing the recursive record merge operator using a fresh row metavariable \(r_3\):
 \begin{displaymath}
 \prftree{a : \{\ \dots\!r_1\ \}}{b : \{\ \dots\!r_2\ \}}{r_1 \wedgeonwedge r_2 = r_3}{a \land b : \{\ \dots\!r_3\ \}}
 \end{displaymath}
-
-\begin{mdframed}[style=TODO]
-Wrinkle: the actual \(\wedgeonwedge\) operator in Dhall may need some thought for how it interacts with constraints.
-\end{mdframed}
 
 Learning that the label is \emph{not} in the output tells us that the label is in neither of the inputs, and vice-versa:
 \begin{displaymath}
@@ -972,10 +1491,10 @@ Finally, learning the label is in both sides triggers the recursive case:
 \begin{displaymath}
 \prftree
   {r_3 = (\ l : t_3,\ \dots\!(r_3 \setminus l)\ )}
-  {t_1 = \{\ \dots\!r\prime_1\ \}}
-  {t_2 = \{\ \dots\!r\prime_2\ \}}  
-  {t_3 = \{\ \dots\!r\prime_3\ \}}
-  {r\prime_1 \wedgeonwedge r\prime_2 = r\prime_3}
+  {t_1 = \{\ \dots\!r^\prime_1\ \}}
+  {t_2 = \{\ \dots\!r^\prime_2\ \}}
+  {t_3 = \{\ \dots\!r^\prime_3\ \}}
+  {r^\prime_1 \wedgeonwedge r^\prime_2 = r^\prime_3}
   {r_1 \wedgeonwedge r_2 = (r_3 \setminus l)}
   {(\ l : t_1,\ \dots\!r_1\ ) \wedgeonwedge (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
@@ -1017,9 +1536,9 @@ But it always makes progress on the right side:
   {r_1 \mathop{/\!/\!/}\ (\ l : t_2,\ \dots\!r_2\ ) = r_3}
 \end{displaymath}
 
-Finally we describe the constraint \(a \mathop{\$} b \to t_3\) for typing the record--union merge expression:
+Finally we describe the constraint \(r_1 \mathop{\$} rm_2 \to t_3\) for typing the record--union merge expression:
 \begin{displaymath}
-\prftree{a : \{\ \dots\!r_1\ \}}{b : \langle\ \dots\!\mathit{rm}_2\ \rangle}{a \mathop{\$} b \to t_3}{\texttt{merge}\ a\ b : t_3}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \langle\ \dots\!\mathit{rm}_2\ \rangle}{r_1 \mathop{\$} rm_2 \to t_3}{\inHS`merge`\ a\ b : t_3}
 \end{displaymath}
 
 Both rows must have the same labels, but it gets partially stuck if it is not know whether the union type has data at a label:
@@ -1039,6 +1558,7 @@ Knowing that makes progress:
   {(\ l : t_1,\ \dots\!r_1 )\ \mathop{\$}\ \lcurvyangle\ l : t_2,\ \dots\!\mathit{rm}_2\ \rcurvyangle \to t_3}
 \end{displaymath}
 
+\iffalse
 \begin{verbatim}
 apartness rules:
 
@@ -1054,6 +1574,7 @@ mt2 = none
 ______________________________________________
 ( l : t1, ...r1 ) $ ( l :? mt2, ...rm2 ) -> t3
 \end{verbatim}
+\fi
 
 
 % CCombine r1 r2 r3: r1 /\ r2 = r3
@@ -1087,14 +1608,37 @@ However, it might still be possible to make an algorithm for the row type proble
 
 
 \chapter{Unification}
-Unification, subsumption, and apartness relations.
+Unification is a relation on terms that indicates what needs to be the case for two types to be equal, and what their unified result will be.
+It expresses a demand by the typechecker: the term will not be well-typed unless it can find evidence that the types to be unified are in fact equal in context.
+Thus it fits well into the constraint system of this paper, as each unification constraint can be kept in the constraints produced by typechecking, and then later solved (partially or fully).
+Because unification can affect things like evaluation, unlike universe and row constraints, all unification constraints must be solved fully to produce a program: there can be no metavariables left.
+
+A related problem is to quickly determine some cases in which two values can never be equal.
+This is used above to make progress on row constraints, and in fact it may use unification constraint context to make these determinations because it is operating on the constraint context instead of creating constraints.
+
+Unification is a powerful tool for implementing typechecking, but also involves difficult tradeoffs because it ultimately faces an impossible problem: determining whether two values might be equal is undecidable, and so is the same problem for types, since types can mention values in dependently-typed systems.
+So the actual evidence that unification may search for depends on the theory and implementation.
+
+There are many papers on the topic.
+One approach is ``Type checking through unification'', which uses unification in key ways to do much of the work of type checking via unification, and navigates the tight weave between typechecking, unification, and evaluation~\cite{mazzoli_abel_2016}.
+
+Subsumption adds a twist on unification by allowing for an order, as if one type is larger than another.
+The philosophy of subsumption is that one type is subsumed by a second type if all values of the first type may be used where values of the second type are expected.
+
+In the system of this paper then, the only substantial difference between unification and subsumption is for the universe judgment, which introduces the inequality \(u \le v\) for \(\inHS`Universe`\ u \subsumedBy \inHS`Universe`\ v\).
+This asymmetry propagates through type constructors, including contravariantly in function arguments while covariantly in function outputs and also record and union types.
+
+The key detail here is that the structure of the terms is still required to be the same for subsumption, it is just the values of universe levels that may differ (and recursively through rows too).
+This means that the unification algorithms still apply.
+
+% Unification, subsumption, and apartness relations.
 
 Unification and subsumption are reflexive and transitive.
 Unification and apartness are symmetric.
 
-NOTE: Check subsumption only happens for types.
+% NOTE: Check subsumption only happens for types.
 
-Unification and subsumption are the same judgment, just parameterized over a relationship ($(=)$ for unification, \((\le)\) or \((\ge)\) for subsumption) which is only used as the constraint for comparing universe levels right now.
+Unification and subsumption are the same judgment, just parameterized over a relationship (\((=)\) for unification, \((\le)\) or \((\ge)\) for subsumption) which is only used as the constraint for comparing universe levels right now.
 This means that it does not handle row expansion or contraction -- but hopefully row polymorphism is sufficient for that.
 
 Maybe apartness should be called disunifiability, since it does not serve the same purpose as it does in PureScript/Haskell.
@@ -1105,16 +1649,17 @@ Technically they can also represent non-types, but unification is much less usef
 
 Metavariables can of course be unified with anything (as long as scope matches up?), and so will be apart from nothing.
 
-\section{Metavariables}
+%\section{Metavariables}
+%
+%Map of metavariables to their (partially filled-in) values.
+%Error state has some metavariables with contradictory assignments.
 
-Map of metavariables to their (partially filled-in) values.
-Error state has some metavariables with contradictory assignments.
+%\section{Context}
+%
+%Dealing with variables.
+%I guess when you're unifying into a lambda, you want it to already be %alpha-normalized.
 
-\section{Context}
-
-Dealing with variables.
-I guess when you're unifying into a lambda, you want it to already be alpha-normalized.
-
+\iffalse
 \section{Unification and Subsumption}
 Unification is essentially a command to the typechecker to do what it needs to make two types be the same.
 In particular, this will involve increasing known information about metavariables and adding constraints (both universe and row constraints) to the context.
@@ -1135,7 +1680,7 @@ Computation rules?
 Controversial, because they do not compose:
 
 \begin{displaymath}
-\prftree{\inHS`l_1 /= l_2`}{\inHS`l_1 /= r_2`}{\inHS`r_1 /= l_2`}{\inHS`r_1 /= r_2`}{\inHS`if b_1 then l_1 else r_1 /= if b_2 then l_2 else r_2`}
+\prftree{\inHS`l_1 f l_2`}{\inHS`l_1 /= r_2`}{\inHS`r_1 /= l_2`}{\inHS`r_1 /= r_2`}{\inHS`if b_1 then l_1 else r_1 /= if b_2 then l_2 else r_2`}
 \end{displaymath}
 \begin{displaymath}
 \prftree{\inHS`l_1 /= l_2`}{\inHS`r_1 /= r_2`}{\inHS`if b then l_1 else r_1 /= if b then l_2 else r_2`}
@@ -1143,36 +1688,544 @@ Controversial, because they do not compose:
 \begin{displaymath}
 \prftree{\inHS`z /= r`}{\inHS`s _ /= r`}{\inHS`Natural/fold n z s /= r`}
 \end{displaymath}
-
+\fi
 
 
 \chapter{Properties}
 
-Characterize type-level functions (between universes).
+% Characterize type-level functions (between universes).
+
+To deliver on the promise that universes really are the type of types, it must be the case that each typing judgment produces a type whose type is a universe, and this is easily verified by inspection of the typing rules:
+\begin{displaymath}
+\prftree{\Gamma \vdash e : T \Leftarrow C_1}{\Gamma \vdash T : \inHS`Universe`\ u \Leftarrow C_2 \quad C_2 \subseteq C_1}
+\end{displaymath}
+This is true in the current Dhall standard except for the lack of universes above \inHS`Sort` (that is \inHS`Universe 2`).
+
+All subterms typecheck, and their constraints appear in the result.
+This is true from the structure of the typechecking judgments, which typecheck all immediate subterms and include those constraints in the result.
+Thus transitive subterms are also included.
+
+All type-level functions automatically respect subsumption, because all universe-level expressions are monotonic, and term structure is otherwise preserved.
+
+Let-substitution typechecks.
+This requires the substitution to respect the variable instantiations chosen during typechecking, but then with this set-up it is mostly trivial.
+I believe the resultant type and constraints will be verbatim, just with the same substitution applied.
+\begin{displaymath}
+\prftree{\Gamma, (x \coloneq e_2 : T_2 \Leftarrow C_2), \Gamma^\prime \vdash e_1 : T_1 \Leftarrow C_1}{\Gamma, \Gamma^\prime[x \coloneq e_2] \vdash e_1[x \coloneq e_2] : T_1[x \coloneq e_2] \Leftarrow C_1[x \coloneq e_2]}
+\end{displaymath}
+
+Context subsumption.
+A term typechecks under a more specific context too, resulting in a similar but potentially more specific type/constraints.
+This is true mainly for structural reasons like the above property: since the constraints propagate through type inference in a way that respects subsumption, it is enough that typechecking each variable produces a more specific type -- but this is exactly what the assumption of context subsumption gives us, possibly under some extra constraints \(C_3\) that will help ensure that the resultant constraints \(C_2\) are more specific than the original ones \(C_1\).
+\begin{displaymath}
+\prftree{\Gamma_1 \vdash e : T_1 \Leftarrow C_1}{\Gamma_2 \subsumedBy \Gamma_1 \Leftarrow C_3}{\Gamma_2 \vdash e : T_2 \Leftarrow C_2 \qquad (T_2 \Leftarrow C_2) \subsumedBy (T_1 \Leftarrow C_1) \Leftarrow C_3}
+\end{displaymath}
+
+Type preservation.
+For a given context \(\Gamma\), if \(e_1\) typechecks with type \(T_1\) under constraints \(C_1\), and it evaluates to \(e_2\), then \(e_2\) also typechecks, possibly with a more general type/constraints.
+More specifically, \(e_2\) will have type \(T_2\) which is subsumed by \(T_1\) (that is, \(e_2\) can be used everywhere an expression of type \(T_1\) is expected) under the constraints \(C_3\).
+The constraints \(C_2 \cup C_3\) must be implied by the first constraints \(C_1\).
+(Note: this is semantic: they may not literally be a subset of the atomic constraints from \(C_1\).)
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : T_1 \Leftarrow C_1}{\Gamma \vdash e_1 \mapsto e_2}{\Gamma \vdash e_2 : T_2 \Leftarrow C_2 \qquad T_2 \subsumedBy T_1 \Leftarrow C_3 \qquad C_2 \cup C_3 \subseteq C_1}
+\end{displaymath}
 
 
+\begin{displaymath}
+\prftree{\Gamma_2 \subsumedBy \Gamma_1 \Leftarrow C_3}{\Gamma_1 \vdash e_1 : T_1 \Leftarrow C_1}{\Gamma_2 \vdash e_2 : T_2 \Leftarrow C_4}
+\end{displaymath}
 
+Everything that typed before still types, since the rules are strictly more general.
+
+
+Constraints don't affect evaluation.
+
+\iffalse
 \chapter{Putting Everything Together}
 Coming back to surface syntax, it seems like universe polymorphism and row polymorphism can both be implicit.
 
-The tricky part will be whether this can work for function variables (which are arbitrary unknowns) as opposed to let variables: can higher-order universe/row polymorphism be inferred?
+% The tricky part will be whether this can work for function variables (which are arbitrary unknowns) as opposed to let variables: can higher-order universe/row polymorphism be inferred?
 
 Each usage of a polymorphic variable will have its polymorphic variables instantiated with fresh metavars, propagating the constraints.
 
 Types can be syntactically omitted where they were previously required.
 Also replaced with a metavariable syntax in other positions.
-(TODO: characterize when inference is perfect.)
-For superpositions (TODO: characterize), since the source is immutable, they must be replaced with metavariables and said to already unify (maybe that can be done through syntax like \inHS`let v = ?metavar in let veq = assert v === [[superposition]] in v`).
+% (TODO: characterize when inference is perfect.)
+% For superpositions (TODO: characterize), since the source is immutable, they must be replaced with metavariables and said to already unify (maybe that can be done through syntax like \inHS`let v = ?metavar in let veq = assert v === [[superposition]] in v`).
+\fi
 
 %\chapter{Conclusion}
 
-\iffalse
+\chapter{Future Work}
+Some obvious technical challenges remain with universes.
+In order to enable better handling of the contravariance of function inputs, it would be great to extend the arithmetic with a minimum operation in addition to the maximum, making it a lattice (not merely a semilattice), but that represents a significant extension in scope.
+It would also be beneficial to come up with a clear way to present universe errors to users, since they can be arcane and hard to debug, especially if the user is given some random-seeming universe level constraint(s) no specific indication of why they occurred, how they were derived, and where the conflicts are in the source code.
+
+One key optimization is minimizing constraint contexts.
+When a universe variable is mentioned in a term but not the type of the term, the variable can still appear in the constraint context, even though it will have no interaction since it does not appear in the type (the public interface)!
+In many cases these variables can be eliminated, but setting them to appropriate values (usually lower bounds).
+The implementation of universe polymorphism in Coq is much more aggressive about this kind of minification, but it has led to some bugs and unexpected behavior by making assumptions that reduce the generality of the polymorphism, whereas an ideal algorithm would preserve full generality~\cite{10.1007/978-3-319-08970-6_32}.
+
+To give an example of how common it is to have constraints that can be minimized, polymorphic functions like the built-in \inHS`Natural/fold` take a type of any universe level in as an argument, and the subsumption rule invoked during function application says this universe level instantiated by \inHS`Natural/fold` just needs to be large enough to contain the argument, potentially being larger as well.
+But once it is applied, that universe variable does not appear in the output anymore, and in fact it is always enough to assume that it is in fact the same level as the argument, thus eliminating it from the constraints.
+
+Another direction is the obvious one of higher-order polymorphism, where arguments that are functions can in fact be invoked as polymorphic functions, and their constraints tracked in the body of the function and then checked when an argument is applied.
+The main challenge here is consistency: whereas let-polymorphism was clearly consistent since it is just syntactic sugar for substitution with a sprinkle of polymorphism, it's not clear what universe to assign to polymorphism functions such that it remains consistent.
+One option is to then index universes by infinite ordinals, such as \(0 < 1 < \cdots < \omega\), but that seems like a lot more work to stratify universes across that new layer.
+
+At a more practical level, higher-order polymorphism will require understanding functions over universe levels and row types.
+For example, if \(F : \inHS`Universe`\ ? \to \inHS`Universe`\ ?\) is a input to a function, it is reasonable to expect it to still be polymorphic: that is, instead of having type \(\inHS`Universe`\ u \to \inHS`Universe`\ v\) for some fixed \(u\) and \(v\), it rather would have type \(\inHS`Universe`\ u \to \inHS`Universe`\ v(u)\), implicitly quantified over the input level \(u\), with the output level \(v(u)\) depending on the input level.
+Particular values for \(F\) will have different behaviors:
+\begin{enumerate}
+\item Constant functors like \(\inHS`Const`\ l = \inHS`Natural`\) will have \(v(u)\) also constant (\(0\) in this case), since the output does not depend on the input.
+\item The identity functor and builtin functor \inHS`List` will both have \(v(u) = u\).
+\item Some functors may increase the level, e.g. \(v(u) = \max(u, 1)\).
+\end{enumerate}
+Nevertheless, all universe level functions will have certain properties: they will be monotonic, in fact they will distribute over maximum as all operators in the algebra do: \(v(\max(u,w)) = \max(v(u), v(w))\).
+
+Similarly, row types will need to be extended handle row functions.
+Again, there are only a few building blocks that dictate how the output will relate to the input, so the structure of row functions is pretty restricted.
+
+There is clearly much more work to do with unification/subsumption and integrating them into the framework of the other constraints, though it should be possible.
+It is obvious that they produce constraints of the other kind, but it is not clear how this process interact with polymorphic variables.
+That is, if the type of a let-binding or higher-order argument is (initially) unknown, how can the system know what metavariables to generalize over, if it is later discovered to be a function?
+
+Finally, it would be amazing if this work could be extended to a principal typing algorithm for Dhall.
+The idea of principal typing is that each term can produce the constraints that its context must satisfy to make it well-typed, and it feels like if the unification algorithm is good enough, it should work for Dhall.
+There is some work on doing this for other type theories, though mostly in the absence of higher-order polymorphism~\cite{10.1145/237721.237728}\cite{10.5555/646255.684409}.
+Hopefully this technique of pushing the polymorphism out to the leaves (universe levels and row types exclusively) makes it more tractable.
+
 \begin{appdices}
+\chapter{Judgments}
+
+\section{Syntax}
+Definition of the reduced Dhall syntax.
+The \(e_i\) denote expressions, \(n\) denotes a natural number literal, and \(x\) denote names (both variable names and labels for records/unions).
+Note that the \inHS`merge` keyword cannot occur on its own; instead, it must always occur applied to two arguments, with an optional type annotation (this is necessary when the union and record are empty).
+
+\begin{align*}
+e_i, T_i
+  & ::= \inHS`Universe`\ u\ |\ \inHS`Natural`\ |\ \inHS`List`\\
+  & |\ n\ |\ [] : e\ |\ [\ e_1, e_2, \dots, e_n\ ]\\
+  & |\ \inHS`\ `(x : e_1) \to e_2\ |\ \inHS`forall`(x : e_1) \to e_2\\
+  & |\ \inHS`let`\ x = e_1\ \inHS`in`\ e_2\\
+  & |\ e_1 e_2\ |\ e_1 : e_2\\
+  & |\ \{\}\ |\ \{\ x_1 : e_1, x_2 : e_2, \dots, x_n : e_n\ \}\\
+  & |\ \{\!=\!\}\ |\ \{\ x_1 = e_1, x_2 = e_2, \dots, x_n = e_n\ \}\\
+  & |\ <>\ |\ < x_1 : e_1, x_2 : e_2, \dots, x_n : e_n\ >\\
+  & |\ < x = e >\ |\ < x = e, x_1 : e_1, x_2 : e_2, \dots, x_n : e_n\ >\\
+  & |\ x\ |\ e.x\ |\ \inHS`merge`\ e_1\ e_2\ |\ \inHS`merge`\ e_1\ e_2 : e_3\\
+  & |\ e_1 \land e_2\ |\ e_1 \wedgeonwedge e_2\ |\ e_1 \mathop{/\!/} e_2\ |\ e_1 \mathop{/\!/\!/} e_2\\
+  & |\ \inHS`Natural/fold`\ |\ \inHS`List/fold`\\
+u_i & ::= n\ |\ x\ |\ u_1+n\ |\ \max(u_1, u_2)\ |\ \imax(u_1; u_2)\\
+n & ::= 0\ |\ 1\ |\ 2\ |\ \dots\\
+\end{align*}
+
+Contexts
+\begin{align*}
+\Gamma, \Delta
+  & ::= \cdot\ |\ \Gamma, (x : T_1)\ |\ \Gamma, (x \coloneq e_1 : T_2 \Leftarrow C_1)
+\end{align*}
+
+Constraints \(C_i\) have the form of a set of atomic constraints \(\hat C_i\), which can be universe constraints or row constraints or unification/subsumption constraints:
+\begin{align*}
+C_i
+  & ::= \emptyset\ |\ \{\hat C\}\ |\ C_1 \cup C_2\\
+\hat C
+  & ::= u_1 = u_2\ |\ r_1 \wedgeonwedge r_2 = r_3\ |\ r_1 \mathop{/\!/\!/} r_2 = r_3\ |\ r_1\ \$\ mr_2 \to e_3\ |\ e_1 \subsumedBy e_2\\
+\end{align*}
+
+\section{Substitution}
+The only nontrivial rules for substitution are for applying a substitution to a variable: if the variable matches, substitution needs to return the substitution value instead.
+This simplicity is because we assume all variables are distinct, otherwise variable bindings would need to be handled more carefully.
+This means that aside from the base case, all expressions are substituted recursively in the obvious manner.
+
+However, just substituting the literal value upon seeing a variable does not do what we want, since this will preserve metavariables that should be instantiated to fresh variables for polymorphism.
+What needs to happen is that during typechecking, the decision of how to instantiate the metavariables needs to be encoded in the syntax tree at each variable occurrence, and this subsitution performed when a value is chosen for the variable.
+Of course, this seems redundant since polymorphism is only for let-bound variables at the moment, but supporting higher-order polymorphism would require it for lambda- and forall-bound variables.
+\begin{flalign*}
+&{x[x \coloneq v] = v}&\\
+&{x[y \coloneq v] = x}&\\
+&{n[y \coloneq v] = n}&\\
+&{([] : e)[y \coloneq v] = [] : e[y \coloneq v]}&\\
+&{[\ e_1, e_2, \dots, e_n\ ][y \coloneq v] = [\ e_1[y \coloneq v], e_2[y \coloneq v], \dots, e_n[y \coloneq v]\ ]}&\\
+&{(\inHS`\ `(x : e_1) \to e_2)[y \coloneq v] = \inHS`\ `(x : e_1[y \coloneq v]) \to e_2[y \coloneq v]}&\\
+&{(\inHS`forall`(x : e_1) \to e_2)[y \coloneq v] = \inHS`forall`(x : e_1[y \coloneq v]) \to e_2[y \coloneq v]}&\\
+&{(\inHS`let`\ x = e_1\ \inHS`in`\ e_2)[y \coloneq v] = \inHS`let`\ x = e_1[y \coloneq v]\ \inHS`in`\ e_2[y \coloneq v]}&\\
+&{(e_1 : e_2)[y \coloneq v] = e_1[y \coloneq v] : e_2[y \coloneq v]}&\\
+&{\{\}[y \coloneq v] = \{\}}&\\
+&{\{\ x_1 : e_1, \dots, x_n : e_n\ \}[y \coloneq v] = \{\ x_1 : e_1[y \coloneq v], \dots, x_n : e_n[y \coloneq v]\ \}}&\\
+&{\{\!=\!\}[y \coloneq v] = \{\!=\!\}}&\\
+&{\{\ x_1 = e_1, \dots, x_n = e_n\ \}[y \coloneq v] = \{\ x_1 = e_1[y \coloneq v], \dots, x_n = e_n[y \coloneq v]\ \}}&\\
+&{<>[y \coloneq v] =\ <>}&\\
+&{< x_1 : e_1, \dots, x_n : e_n\ >[y \coloneq v] =\ < x_1 : e_1[y \coloneq v], \dots, x_n : e_n[y \coloneq v]\ >}&\\
+&{< x = e >[y \coloneq v] =\ < x = e >}&\\
+&{< x = e, x_1 : e_1, \dots, x_n : e_n\ >[y \coloneq v] =\ < x = e[y \coloneq v], x_1 : e_1[y \coloneq v], \dots, x_n : e_n[y \coloneq v]\ >}&\\
+&{e.x[y \coloneq v] = e[y \coloneq v].x}&\\
+&{(\inHS`merge`\ e_1\ e_2)[y \coloneq v] = \inHS`merge`\ e_1[y \coloneq v]\ e_2[y \coloneq v]}&\\
+&{(\inHS`merge`\ e_1\ e_2 : e_3)[y \coloneq v] = \inHS`merge`\ e_1[y \coloneq v]\ e_2[y \coloneq v] : e_3[y \coloneq v]}&\\
+&{\inHS`Natural/fold`[y \coloneq v] = \inHS`Natural/fold`}&\\
+&{\inHS`List/fold`[y \coloneq v] = \inHS`List/fold`}&
+\end{flalign*}
+
+\section{Typing}
+
+\subsection{Builtins}
+\begin{displaymath}
+\prftree{\Gamma \vdash n : \inHS`Natural`}
+\quad
+\prftree{\Gamma \vdash \inHS`Natural` : \inHS`Universe`\ 0}
+\end{displaymath}
+\begin{displaymath}
+\prftree{u \coloneq fresh}{\Gamma \vdash \inHS`Natural/fold` : \inHS`Natural` \to
+\forall(r : \inHS`Universe`\ u) \to
+(r \to r) \to r \to r}
+\end{displaymath}
+\begin{displaymath}
+\prftree{T \coloneq fresh}{\Gamma \vdash e_1 : T_1, \dots, e_n : T_n \Leftarrow C_1}{T_1 \subsumedBy T, \dots, T_n \subsumedBy T \Leftarrow C_2}{\Gamma \vdash [\ e_1, \dots, e_n\ ] : \inHS`List`\ T \Leftarrow C_1 \cup C_2}
+\quad
+\prftree{\Gamma \vdash e \rightarrowbar \inHS`List`\ e_1}{\Gamma \vdash ([] : e) : \inHS`List`\ e_1}
+\end{displaymath}
+\begin{displaymath}
+\prftree{u \coloneq fresh}{\Gamma \vdash \inHS`List` : \inHS`Universe`\ u \to \inHS`Universe`\ u}
+\end{displaymath}
+\begin{displaymath}
+\prftree{u \coloneq fresh}{v \coloneq fresh}{\Gamma \vdash \inHS`List/fold` : \forall(a : \inHS`Universe`\ v) \to \inHS`List`\ a \to
+\forall(r : \inHS`Universe`\ u) \to
+(a \to r \to r) \to r \to r}
+\end{displaymath}
+
+\subsection{Functions and Variables}
+Concrete and abstract variables:
+\begin{displaymath}
+\prftree{vs \coloneq metavariables(e : T) \setminus bound(\Gamma)}{us \coloneq fresh(vs)}{\Gamma, (x \coloneq e : T \Leftarrow C), \Delta \vdash x : T[vs \coloneq us] \Leftarrow C[vs \coloneq us]}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma, (x : T), \Delta \vdash x : T \Leftarrow \emptyset}
+\end{displaymath}
+
+Let bindings:
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : T_1 \Leftarrow C_1}{\Gamma, (x \coloneq e_1 : T_1 \Leftarrow C_1) \vdash e_2 : T_2 \Leftarrow C_2}{\Gamma \vdash \inHS`let`\ x\ \inHS`=`\ e_1\ \inHS`in`\ e_2 : T_2[x \coloneq e_1] \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+
+Lambdas and foralls:
+\begin{displaymath}
+\prftree{\Gamma \vdash T_1 : \inHS`Universe`\ u_1 \Leftarrow C_1}{\Gamma, (x : T_1) \vdash e_1 : T_2 \Leftarrow C_2}{\Gamma \vdash (\lambda(x : T_1) \to e_1) : \forall(x : T_1) \to T_2 \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash T_1 : \inHS`Universe`\ u_1 \Leftarrow C_1}{\Gamma, (x : T_1) \vdash T_2 : \inHS`Universe`\ u_2 \Leftarrow C_2}{\Gamma \vdash (\forall(x : T_1) \to T_2) : \inHS`Universe`\ \imax(u_1; u_2) \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+
+Function application:
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : \forall(x : T_1) \to T_2 \Leftarrow C_1}{\Gamma \vdash e_2 : T_3 \Leftarrow C_2}{\Gamma \vdash T_2 \subsumedBy T_3 \Leftarrow C_3}{\Gamma \vdash e_1 e_2 : T_2[x \coloneq e_2] \Leftarrow C_1 \cup C_2 \cup C_3}
+\end{displaymath}
+
+\subsection{Rows}
+\begin{displaymath}
+\prftree{\Gamma \vdash \{\!=\!\} : \{\}}
+\quad
+\prftree{\Gamma \vdash \{\} : \inHS`Universe`\ 0}
+\quad
+\prftree{\Gamma \vdash\ <>\ : \inHS`Universe`\ 0}
+\quad
+\prftree{\Gamma \vdash e : \{\ l : T, \dots r\ \}}{\Gamma \vdash e.l : T}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : T_1\ \cdots\ \Gamma \vdash e_n : T_n}{\Gamma \vdash \{\ l_1 = e_1, \dots, l_n = e_n\ \} : \{\ l_1 : T_1, \dots, l_n : T_n \}}
+\quad
+\prftree{\Gamma \vdash T_1 : \inHS`Universe`\ u_1\ \cdots\ \Gamma \vdash T_n : \inHS`Universe`\ u_n}{\Gamma \vdash \{\ l_1 : T_1, \dots, l_n : T_n\ \} : \inHS`Universe`\ \max(u_1, \dots, u_n)}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash e : T}{\Gamma \vdash T_1 : \inHS`Universe`\ u_1\ \cdots\ \Gamma \vdash T_n : \inHS`Universe`\ u_n}{\Gamma \vdash\ < l = e,\ l_1 : T_1, \dots,\ l_n : T_n >\ :\ < l : T,\ l_1 : T_1, \dots,\ l_n : T_n >}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : \{\ \dots r_1 \}}{\Gamma \vdash e_2 : \{\ \dots r_2 \}}{\Gamma \vdash e_1 \land e_2 : \{\ \dots r_1 \wedgeonwedge r_2\ \}}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : \inHS`Universe`\ u_1}{e_1 \equiv \{\ \dots r_1 \}}{\Gamma \vdash e_2 : \inHS`Universe`\ u_2}{e_2 \equiv \{\ \dots r_2 \}}{\Gamma \vdash e_1 \wedgeonwedge e_2 : \inHS`Universe`\ \max(u_1, u_2)}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : \{\ \dots r_1 \}}{\Gamma \vdash e_2 : \{\ \dots r_2 \}}{\Gamma \vdash e_1 \mathop{/\!/} e_2 : \{\ \dots r_1 \mathop{/\!/\!/} r_2\ \}}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash e_1 : \inHS`Universe`\ u_1}{e_1 \equiv \{\ \dots r_1 \}}{\Gamma \vdash e_2 : \inHS`Universe`\ u_2}{e_2 \equiv \{\ \dots r_2 \}}{\Gamma \vdash e_1 \mathop{/\!/\!/} e_2 : \inHS`Universe`\ \max(u_1, u_2)}
+\end{displaymath}
+\begin{displaymath}
+\prftree{a : \{\ \dots\!r_1\ \}}{b : \langle\ \dots\!\mathit{rm}_2\ \rangle}{r_1 \mathop{\$} rm_2 \to t_3}{\inHS`merge`\ a\ b : t_3}
+\end{displaymath}
+
+
+\section{Unification/Subsumption}
+We extend subsumption to cover contexts, for stating properties of the type theory.
+Of course the empty context is subsumed by the empty context with no constraints, and it is extended for abstract variables (those bound by foralls and lambdas) in the obvious way:
+\begin{displaymath}
+\prftree{\cdot \subsumedBy \cdot \Leftarrow \emptyset}
+\qquad
+\prftree{\Gamma_1 \subsumedBy \Gamma_2 \Leftarrow C_1}{T_1 \subsumedBy T_2 \Leftarrow C_2}{\Gamma_1, (x : T_1) \subsumedBy \Gamma_2, (x : T_2) \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+We can also specialize abstract variables to concrete variables: this is needed for showing that function application preserves typing.
+\begin{displaymath}
+\prftree{\Gamma_1 \subsumedBy \Gamma_2 \Leftarrow C_2}{T_1 \subsumedBy T_2 \Leftarrow C_3}{\Gamma_1, (x \coloneq e : T_1 \Leftarrow C_1) \subsumedBy \Gamma_2, (x : T_2) \Leftarrow C_1 \cup C_2 \cup C_3}
+\end{displaymath}
+Context subsumption can also specialize the type of a concrete variable (which only occurs if an annotation is changed or removed), but its value cannot change since it might be involved in unification constraints.
+\begin{displaymath}
+\prftree{\Gamma_1 \subsumedBy \Gamma_2 \Leftarrow C_3}{(T_1 \Leftarrow C_1) \subsumedBy (T_2 \Leftarrow C_2) \Leftarrow C_4}{\Gamma_1, (x \coloneq e : T_1 \Leftarrow C_1) \subsumedBy \Gamma_2, (x \coloneq e : T_2 \Leftarrow C_2) \Leftarrow C_3 \cup C_4}
+\end{displaymath}
+
+Similarly for convenience, subsumption is extended to pairs of types combined with the constraints they need to typecheck:
+\begin{displaymath}
+\prftree{T_1 \subsumedBy T_2 \Leftarrow C_3}{C_1 \subseteq C_2 \cup C_3}{(T_1 \Leftarrow C_1) \subsumedBy (T_2 \Leftarrow C_2) \Leftarrow C_3 \cup ((C_2 \cup C_3) \setminus C_1)}
+\end{displaymath}
+% \bigcap \{e | C_1 \subseteq C_2 \cup C_3 \cup e\}
+The intution here is that the constraints \(C_3\) determine how \(T_1\) and \(T_2\) must be compatible (since they might mention different metavariables that need to be aligned somehow), and this forces.
+Ugh maybe we want to know what variables are bound.
+Or emit \(C_1 \setminus (C_2 \cup C_3)\) to answer ``what needs to be added to make \(C_1\) satisfied''.
+Maybe it's okay to make it semantic like that because it's only a meta property.
+
+Examples:
+
+\begin{displaymath}
+\prftree{\inHS`Universe`\ u \Leftarrow \inHS`Universe`\ v \Leftarrow \{\ u \le v\ \}}{(\inHS`Universe`\ u \Leftarrow \{\ u \ge 4\ \}) \subsumedBy (\inHS`Universe`\ v \Leftarrow \{\ v \le 2\ \}) \Leftarrow false}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{\inHS`Universe`\ u \equiv \inHS`Universe`\ v \mapsto \inHS`Universe`\ \max(u,v) \Leftarrow \{u = v\}}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\inHS`Universe`\ u \subsumedBy \inHS`Universe`\ v \Leftarrow \{u \le v\}}
+\end{displaymath}
+
+Row type subsumption requires the \emph{same} labels in each row, merely subsuming the corresponding types (covariantly).
+This is because the row merge operators in Dhall would have different behavior depending on whether subsumption is performed on their result or their operands.
+\begin{displaymath}
+\prftree
+  {T_1 \subsumedBy E_1 \Leftarrow C_1\ \cdots\ T_n \subsumedBy E_n \Leftarrow C_n}
+  {\{\ l_1 : T_1, \dots, l_n : T_n\ \} \subsumedBy \{\ l_1 : E_1, \dots, l_n : E_n\ \} \Leftarrow C_1 \cup \cdots \cup C_n}
+\end{displaymath}
+\begin{displaymath}
+\prftree
+  {T_1 \subsumedBy E_1 \Leftarrow C_1\ \cdots\ T_n \subsumedBy E_n \Leftarrow C_n}
+  {<\ l_1 : T_1, \dots, l_n : T_n\ >\ \subsumedBy\ <\ l_1 : E_1, \dots, l_n : E_n\ >\ \Leftarrow C_1 \cup \cdots \cup C_n}
+\end{displaymath}
+
+Functions are contravariant in their domain and covariant in their codomain.
+\begin{displaymath}
+\prftree
+  {A_2 \subsumedBy A_1 \Leftarrow C_1}
+  {B_1 \subsumedBy B_2 \Leftarrow C_2}
+  {\forall(x : A_1) \to B_1 \subsumedBy \forall(x : A_2) \to B_2 \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+
+The list functor preserves subsumption:
+\begin{displaymath}
+\prftree
+  {T_1 \subsumedBy T_2 \Leftarrow C_1}
+  {\inHS`List`\ T_1 \subsumedBy \inHS`List`\ T_2 \Leftarrow C_1}
+\end{displaymath}
+
+Natural is only subsumed by itself:
+\begin{displaymath}
+\prftree{\inHS`Natural` \subsumedBy \inHS`Natural` \Leftarrow \emptyset}
+\end{displaymath}
+
+Helpers for keeping track of free and bound metavariables, in terms, universe expressions, and row expressions:
+
+\begin{flalign*}
+&{metavariables(\inHS`Universe`\ u) = metavariables_u(u)}&\\
+&{metavariables_u(x) = \{\ x\ \}}&\\
+&{metavariables_u(u+k) = metavariables_u(u)}&\\
+&{metavariables_u(\max(u, v)) = metavariables_u(u) \cup metavariables_u(v)}&\\
+&{metavariables_u(\ifop(u, v)) = metavariables_u(u) \cup metavariables_u(v)}&\\
+&\dots\\
+&{metavariables(\{ \dots r \}) = metavariables_r(r)}&\\
+&{metavariables_r(x) = \{\ x\ \}}&\\
+&{metavariables_r(( l : T_1, \dots r)) = metavariables(T_1) \cup metavariables_r(r)}&\\
+&\dots\\
+&{metavariables(e_1 e_2) = metavariables(e_1) \cup metavariables(e_2)}
+\\
+&{bound(\cdot) = \emptyset}&\\
+&{bound(\Gamma, x : T) = bound(\Gamma) \cup metavariables(T)}&\\
+&{bound(\Gamma, x \coloneq e : T \Leftarrow C) = bound(\Gamma)}&\\
+\end{flalign*}
+It is extended in the obvious way to the remaining cases.
+
+\section{Evaluation}
+Evaluation is extended to take place in a context, simply by substituting let-bound variables.
+\begin{displaymath}
+\prftree{e_1 \rightarrowbar e_2}{\cdot \vdash e_1 \rightarrowbar e_2}
+\qquad
+\prftree{\Gamma \vdash e_1 \rightarrowbar e_2}{\Gamma, (x : T_1) \vdash e_1 \rightarrowbar e_2}
+\qquad
+\prftree{e_1[x \coloneq e_0] = e_2}{\Gamma \vdash e_1 \rightarrowbar e_3}{\Gamma, (x \coloneq e_0 : T_1 \Leftarrow C_1) \vdash e_1 \rightarrowbar e_3}
+\end{displaymath}
+
+Evaluation rules need to preserve typing, so we record proofs of that right after each rule.
+
+The most important evaluation rule is applying a lambda literal to an argument, and we go through the proof that it preserves typing in the most detail:
+\begin{displaymath}
+\prftree{e_1 \rightarrowbar \lambda(x : T_1) \to e_2}{e_2[x \coloneq e_3] = e_4}{e_4 \rightarrowbar e_5}{e_1 e_3 \rightarrowbar e_5}
+\end{displaymath}
+By the typing derivation of application, \(e_1\) must have a function type and \(e_2\) must have an argument that fits its codomain, so there are three main steps working from that hypothesis: ensuring that the type of the evaluated lambda expression matches the original type of \(e_1\), ensuring that the substitution is well-typed, and then the final step of evaluating the substitution.
+\begin{enumerate}
+\item
+\begin{displaymath}
+\prftree
+{\prftree
+  {\prftree
+    {\Gamma \vdash e_1 e_3 : T_2[x \coloneq e_3] \Leftarrow C_2}
+    {\Gamma \vdash e_1 : \forall(x : T_0) \to T_2 \Leftarrow C_3}
+  }
+  {e_1 \rightarrowbar \lambda(x : T_1) \to e_2}
+  {\Gamma \vdash \lambda(x : T_1) \to e_2 : \forall(x : T_1) \to T_3 \Leftarrow C_4 \quad T_0 \subsumedBy T_1 \quad T_3 \subsumedBy T_2}
+}
+{\Gamma, (x : T_1) \vdash e_2 : T_3 \Leftarrow C_4}
+\end{displaymath}
+\item
+\begin{displaymath}
+\prftree
+  {\prftree{\text{1.}}
+    {\Gamma, (x : T_1) \vdash e_2 : T_3 \Leftarrow C_4}
+  }
+  {\prftree
+    {\Gamma \vdash e_1 e_3 : T_2[x \coloneq e_3] \Leftarrow C_2}
+    {\Gamma \vdash e_3 : T_4 \Leftarrow C_5 \quad T_4 \subsumedBy T_0 \Leftarrow C_6}
+  }
+  {\Gamma \vdash e_2[x \coloneq e_3] : T_2[x \coloneq e_3]}
+\end{displaymath}
+\item
+\begin{displaymath}
+\prftree
+  {\prftree{\text{2.}}
+    {\Gamma \vdash e_2[x \coloneq e_3] : T_2[x \coloneq e_3]}
+  }
+  {e_2[x \coloneq e_3] = e_4 \rightarrowbar e_5}
+  {\Gamma \vdash e_5 : T_?[x \coloneq e_3]}
+\end{displaymath}
+\end{enumerate}
+By the rule for typing function application, it must be that the type of \(e_4\) is subsumed by the codomain of the function.
+
+The fallback rule for function application, when the function does not normalize to a lambda yet, is well-typed by the contravariance of subsumption on the input, meaning that evaluating the function actually makes its input potentially larger:
+\begin{displaymath}
+\prftree{e_1 \rightarrowbar e_3}{e_2 \rightarrowbar e_4}{e_1 e_2 \rightarrowbar e_3 e_4}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{e_2[x \coloneq e_1] = e_3}{e_3 \rightarrowbar e_4}{\inHS`let`\ x = e_1\ \inHS`in`\ e_2 \rightarrowbar e_4}
+\end{displaymath}
+
+The proof for this is very similar to function application, but with fewer details.
+
+\begin{displaymath}
+\prftree{e_1 \rightarrowbar e_3}{e_1 : e_2 \rightarrowbar e_3}
+\end{displaymath}
+
+This proof is trivial, since the typing assumption of \(e_1 : e_2\) is that the intrinsic type of \(e_1\) is subsumed by \(e_2\) via constraints already included in the typing judgment.
+
+\begin{displaymath}
+\prftree{e_1 \rightarrowbar e_2}{\{\ x = e_1, \dots\ \}.x \rightarrowbar e_2}
+\end{displaymath}
+
+Instead of laboring through the syntax for the row operators, we describe their behavior in prose.
+The right-biased merge operators \(\mathop{/\!/}\) (for values) and  \(\mathop{/\!/\!/}\) (for types) simply return the combination of the two rows, with the right side taking priority in terms of duplicates.
+The unbiased merge operators \(\land\) (for values) and \(\wedgeonwedge\) (for types) are a bit more complicated because they act recursively: if the same label appears in both sides, it must be a record (value/type respectively), and so the same operator is applied recursively to it.
+
+\begin{displaymath}
+\prftree{e_1 \rightarrowbar \{\ l = e_3, \dots\ \}}{e_2 \rightarrowbar <\ l = e_4, \dots >}{e_3 e_4 \rightarrowbar e_5}{\inHS`merge`\ e_1 e_2 \rightarrowbar e_5}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{e \rightarrowbar e}
+\end{displaymath}
+
+\chapter{PureScript Reference}
+List of datatypes, functions, typeclasses, and typeclass instances referenced in the code listings in this paper.
+
+\begin{minted}{Haskell}
+apply :: forall a b. (a -> b) -> a -> b
+infixr 0 apply as $
+applyFlipped :: forall a b. a -> (a -> b) -> b
+infixl 1 applyFlipped as #
+
+data Map k a
+data Set k
+instance (Ord k) => Semigroup (Set k)
+instance (Ord k) => Monoid (Set k)
+newtype SemigroupMap k a = SemigroupMap (Map k a)
+instance (Ord k, Semigroup a) => Monoid (SemigroupMap k a)
+Set.map :: forall a b. Ord b => (a -> b) -> Set a -> Set b
+Set.insert :: forall a. Ord a => a -> Set a -> Set a
+Set.member :: forall a. Ord a => a -> Set a -> Boolean
+Set.delete :: forall a. Ord a => a -> Set a -> Set a
+Set.singleton :: forall a. a -> Set a
+Map.singleton :: forall k v. k -> v -> Map k v
+Map.lookup :: forall k v. Ord k => k -> Map k v -> Maybe v
+Map.isEmpty :: forall k v. Map k v -> Boolean
+Map.mapMaybeWithKey :: forall k a b. Ord k =>
+  (k -> a -> Maybe b) -> Map k a -> Map k b
+
+newtype Max a = Max a
+instance (Ord a) => Semigroup (Max a)
+instance (Ord a) => Ord (Max a)
+data NonEmpty f a = NonEmpty a (f a)
+instance (Foldable f) => Foldable (NonEmpty f)
+instance (Foldable f) => Foldable1 (NonEmpty f)
+data Maybe a = Nothing | Just a
+instance Foldable Maybe
+instance (Semigroup a) => Monoid (Maybe a)
+maybe :: forall a b. b -> (a -> b) -> Maybe a -> b
+fromMaybe :: forall a. a -> Maybe a -> a
+
+class Eq a where
+  eq :: a -> a -> Boolean
+infix 4 eq as ==
+data Ordering = LT | GT | EQ
+class (Eq a) <= Ord a where
+  ord :: a -> a -> Ordering
+lessThanOrEq :: forall a. Ord a => a -> a -> Boolean
+infixl 4 lessThanOrEq as <=
+greaterThanOrEq :: forall a. Ord a => a -> a -> Boolean
+infixl 4 greaterThanOrEq as >=
+
+
+
+class Semigroup m where
+  append :: m -> m -> m
+  infixr 5 append as <>
+class Semigroup m <= Monoid m where
+  mempty :: m
+class Foldable (t :: Type -> Type) where
+  fold :: forall m. Monoid m => t m -> m
+  foldMap :: forall a m. Monoid m => (a -> m) -> f a -> m
+class (Foldable t) <= Foldable1 t where
+  fold1 :: forall m. Semigroup m => t m -> m
+  all :: forall a. (a -> Boolean) -> f a -> Boolean
+class Functor (f :: Type -> Type) where
+  map :: forall a b. (a -> b) -> f a -> f b
+class (Functor f) <= Apply f where
+  apply :: forall a b. f (a -> b) -> f a -> f b
+class (Functor t, Foldable t) <= Traversable t where
+  traverse :: forall a b m. Applicative m => (a -> m b) -> t a -> m (t b)
+class (Foldable f) <= FoldableWithIndex i f | f -> i where
+  foldMapWithIndex :: forall a m. Monoid m => (i -> a -> m) -> f a -> m
+class (Functor f) <= FunctorWithIndex i f | f -> i where
+  mapWithIndex :: forall a b. (i -> a -> b) -> f a -> f b
+class
+  (
+    FunctorWithIndex i t,
+    FoldableWithIndex i t,
+    Traversable t
+  ) <= TraversableWithIndex i t | t -> i where
+  traverseWithIndex :: forall a b m. Applicative m =>
+    (i -> a -> m b) -> t a -> m (t b)
+\end{minted}
+
+Note: \inHS`(apply maybe append) :: forall m. Semigroup m => m -> Maybe m -> m` is an idiom equivalent to \inHS`\x y -> maybe x (append x) y` that appends the two arguments in order if the second is \inHS`Just`, otherwise it returns just the first argument.
+If \inHS`m` is a \inHS`Monoid`, this is equivalent to \inHS`\x y -> x <> fromMaybe mempty y`.
+
 \end{appdices}
 
-
-\begin{bibliog}
-\end{bibliog}
-\fi
+\bibliography{cites.bib}
 
 \end{document}

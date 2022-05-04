@@ -1,0 +1,124 @@
+@book{10.5555/186677.186689,
+author = {R\'{e}my, Didier},
+title = {Type Inference for Records in Natural Extension of ML},
+year = {1994},
+isbn = {026207155X},
+publisher = {MIT Press},
+address = {Cambridge, MA, USA},
+booktitle = {Theoretical Aspects of Object-Oriented Programming: Types, Semantics, and Language Design},
+pages = {67–95},
+numpages = {29},
+url = "https://www.cs.cmu.edu/~aldrich/courses/819/row.pdf"
+}
+
+@misc{mazzoli_abel_2016,
+title={Type checking through unification},
+url={https://arxiv.org/abs/1609.09709},
+journal={arXiv.org},
+author={Mazzoli, Francesco and Abel, Andreas},
+year={2016},
+month={Sep}
+}
+
+@InProceedings{10.1007/978-3-319-08970-6_32,
+author="Sozeau, Matthieu
+and Tabareau, Nicolas",
+editor="Klein, Gerwin
+and Gamboa, Ruben",
+title="Universe Polymorphism in Coq",
+booktitle="Interactive Theorem Proving",
+year="2014",
+publisher="Springer International Publishing",
+address="Cham",
+pages="499--514",
+abstract="Universes are used in Type Theory to ensure consistency by checking that definitions are well-stratified according to a certain hierarchy. In the case of the Coq proof assistant, based on the predicative Calculus of Inductive Constructions (pCIC), this hierachy is built from an impredicative sort Prop and an infinite number of predicative Typeiuniverses. A cumulativity relation represents the inclusion order of universes in the core theory. Originally, universes were thought to be floating levels, and definitions to implicitely constrain these levels in a consistent manner. This works well for most theories, however the globality of levels and constraints precludes generic constructions on universes that could work at different levels. Universe polymorphism extends this setup by adding local bindings of universes and constraints, supporting generic definitions over universes, reusable at different levels. This provides the same kind of code reuse facilities as ML-style parametric polymorphism. However, the structure and hierarchy of universes is more complex than bare polymorphic type variables. In this paper, we introduce a conservative extension of pCIC supporting universe polymorphism and treating its whole hierarchy. This new design supports typical ambiguity and implicit polymorphic generalization at the same time, keeping it mostly transparent to the user. Benchmarking the implementation as an extension of the Coq proof assistant on real-world examples gives encouraging results.",
+isbn="978-3-319-08970-6",
+url = "https://sozeau.gitlabpages.inria.fr/www/research/publications/drafts/univpoly.pdf"
+}
+
+@article{HARPER1991107,
+title = {Type checking with universes},
+journal = {Theoretical Computer Science},
+volume = {89},
+number = {1},
+pages = {107-136},
+year = {1991},
+issn = {0304-3975},
+doi = {https://doi.org/10.1016/0304-3975(90)90108-T},
+url = {https://www.sciencedirect.com/science/article/pii/030439759090108T},
+author = {Robert Harper and Robert Pollack},
+abstract = {Various formulations of constructive type theories have been proposed to serve as the basis for machine-assisted proof and as a theoretical basis for studying programming languages. Many of these calculi include a cumulative hierarchy of “universes”, each a type of types closed under a collection of type-forming operations. Universes are of interest for a variety of reasons, some philosophical (predicative vs. impredicative type theories), some theoretical (limitations on the closure properties of type theories) and some practical (to achieve some of the advantages of a type of all types without sacrificing consistency.) The Generalized Calculus of Constructions (CCω) is a formal theory of types that includes such a hierarchy of universes. Although essential to the formalization of constructive mathematics, universes are tedious to use in practice, for one is required to make specific choices of universe levels and to ensure that all choices are consistent. In this paper we study several problems associated with type checking in the presence of universes in the context of CCω. First, we consider the basic type checking and well-typedness problems for this calculus. Second, we consider a formulation of Russell and Whitehead's “typical ambiguity” convention whereby universe levels may be elided, provided that some consistent assignment of levels leads to a correct derivation. Third, we consider the introduction of definitions to both the basic calculus and the calculus with typical ambiguity. This extension leads to a notion of “universe polymorphism” analogous to the type polymorphism of ML. Although our study is conducted for CCω, we expect that our methods will apply to other variants of the Calculus of Constructions and to type theories such as Constable's V3.}
+}
+
+ @misc{luo_2012,
+ url={https://www.cs.rhul.ac.uk/home/zhaohui/universes.pdf},
+ journal={Notes on Universes in Type Theory},
+ publisher={For a talk at the Institute for Advanced Study in Princeton},
+ author={Luo, Zhaohui},
+ year={2012},
+ month={Nov}
+ }
+
+@inproceedings{10.5555/645892.671442,
+author = {Hurkens, Antonius J. C.},
+title = {A Simplification of Girard's Paradox},
+year = {1995},
+isbn = {354059048X},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+booktitle = {Proceedings of the Second International Conference on Typed Lambda Calculi and Applications},
+pages = {266–278},
+numpages = {13},
+series = {TLCA '95},
+url = "https://www.cs.cmu.edu/~kw/scans/hurkens95tlca.pdf"
+}
+
+ @misc{ferrai_2018,
+ title={Hurkens' paradox? · issue 250 · Dhall-Lang/Dhall-Lang},
+ url={https://github.com/dhall-lang/dhall-lang/issues/250},
+ journal={Hurkens' paradox? Dhall-Lang on GitHub},
+ publisher={Dhall-Lang},
+ author={Ferrai, Fabrizio},
+ year={2018},
+ month={Oct}
+ }
+
+  @misc{user833970_loic_mike_shulman_2022,
+  title={Has anyone ever accidentally "proven" a false theorem with type-in-type?},
+  url={https://proofassistants.stackexchange.com/a/1232},
+  journal={Proof Assistants Stack Exchange},
+  author={user833970 and Loïc and Mike Shulman},
+  year={2022},
+  month={Mar}
+  }
+
+@inproceedings{10.5555/646255.684409,
+author = {Wells, J. B.},
+title = {The Essence of Principal Typings},
+year = {2002},
+isbn = {3540438645},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+abstract = {Let  S  be some type system. A typing in S for a typable term  M  is the collection of all of the information other than  M  which appears in the final judgement of a proof derivation showing that  M  is typable. For example, suppose there is a derivation in  S  ending with the judgement  A   M  : meaning that  M  has result type when assuming the types of free variables are given by  A . Then (  A , ) is a typing for  M . A principal typing in  S  for a term  M  is a typing for  M  which somehow represents all other possible typings in  S  for  M . It is important not to confuse this with a weaker notion in connection with the Hindley/Milner type system often called"principal types". Previous definitions of principal typings for specific type systems have involvedv arious syntactic operations on typings such as substitution of types for type variables, expansion, lifting, etc.This paper presents a new general definition of principal typings which does not depend on the details of any particular type system. This paper shows that the new general definition correctly generalizes previous system-dependent definitions. This paper explains why the new definition is the right one. Furthermore, the new definition is used to prove that certain polymorphic type systems using -quantifiers, namely System F and the Hindley/Milner system, do not have principal typings.All proofs can be foundin a longer version available at the author's home page.},
+booktitle = {Proceedings of the 29th International Colloquium on Automata, Languages and Programming},
+pages = {913–925},
+numpages = {13},
+series = {ICALP '02}
+}
+
+@inproceedings{10.1145/237721.237728,
+author = {Jim, Trevor},
+title = {What Are Principal Typings and What Are They Good For?},
+year = {1996},
+isbn = {0897917693},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/237721.237728},
+doi = {10.1145/237721.237728},
+abstract = {We demonstrate the pragmatic value of the principal typing property, a property distinct from ML's principal type property, by studying a type system with principal typings. The type system is based on rank 2 intersection types and is closely related to ML. Its principal typing property provides elegant support for separate compilation, including "smartest recompilation" and incremental type inference. Moreover, it motivates a new rule for typing recursive definitions that can type some interesting examples of polymorphic recursion.},
+booktitle = {Proceedings of the 23rd ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages},
+pages = {42–53},
+numpages = {12},
+location = {St. Petersburg Beach, Florida, USA},
+series = {POPL '96}
+}
