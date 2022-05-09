@@ -1,0 +1,261 @@
+\documentclass[12pt]{article}
+\usepackage{amssymb, amsthm, amsmath, amsfonts}
+\usepackage{multicol}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{amsrefs}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{verbatim}
+\usepackage{calc}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable,raster}
+\usepackage[toc,page]{appendix}
+\appendixpageoff
+
+\usepackage{caption}
+
+
+\usepackage{prftree}
+
+\usepackage{bardtex}
+
+\styleoption{poster}
+
+\usepackage{minted}
+\newmintinline[inHS]{haskell}{}
+
+\usepackage{unicode-math}
+\setmainfont[Ligatures={Common,Rare,TeX}]{TeX Gyre Pagella}
+\setmathfont[Scale=MatchUppercase]{Asana Math}
+%\setmathfont{Libertinus Math}
+%\setmathfont[Scale=MatchUppercase]{TeX Gyre Pagella Math}
+%\setmonofont[StylisticSet=3]{inconsolata}
+%\usepackage{cascadia-code}
+%\usepackage[scale=0.92,medium,nomap]{FiraMono}
+%\usepackage[scale=0.92,semibold]{sourcecodepro}
+\setmonofont[Scale=0.92,BoldFont=Hasklig Medium]{Hasklig}[Contextuals=Alternate]
+
+%The following three optional commands change the colors in the poster; if you want to change the default colors, use any or all of these three commands, and insert your choice of colors.  See the manual for details about colors in posters.
+\boxcolor{CarnationPink!60}
+\toptitlecolor{WildStrawberry}
+\boxtitlecolor{Periwinkle}
+
+%The following three optional commands insert figures to the left and/or right of the title box; if you want to insert such figures, use either the first command (for the same figure on both sides of the title box), or one or both of the second and third commands (for a figure on only one side of the title box, or for different figures on the two sides).  See the manual for details these commands.
+%\leftrightlogo{math_prog_logo.pdf}
+\leftlogo{math_prog_logo.pdf}
+\rightlogo{math_prog_logo.pdf}
+
+%The following optional command allows the replacement of the word ``adviser'' in the poster top with one of ``advisers,'' ``advisor'' or ``advisors."  If the command is not used, the default is ``adviser.''
+\adviseroption{advisor}
+
+%The following optional command allows the replacement of the word ``program'' in the program top with ``programs."  If the command is not used, the default is ``program.''
+\programoption{program}
+
+%%The following option allows for poster boxes to have rounded or squared corners.  The options are yes or no.  If the command is not used, the default is yes.
+\roundedcorners{no}
+
+%%The following option allows for the top of poster boxes to be filled in or not.  The options are yes or no.  If the command is not used, the default is no.
+\filledinbox{no}
+
+%%The following option allows for poster boxes to be have a boundary around the whole box.  The options are yes or no.  If the command is not used, there will be an error.
+\wholebox{yes}
+
+%Your macros, if you have any.
+
+\DeclareMathOperator{\imax}{imax}
+\DeclareMathOperator{\ifop}{if}
+\newcommand{\subsumedBy}{\unlhd}
+\providecommand{\lcurvyangle}{\langle}
+\providecommand{\rcurvyangle}{\rangle}
+\providecommand{\wedgeonwedge}{\barwedge}
+
+
+\renewcommand{\biblistfont}{\fontsize{0.82\boxfontsize}{0.95\boxfontsize}\selectfont}
+
+\newfontfamily\titlefont{BioRhyme}
+\DeclareTextFontCommand{\texttitlefont}{\titlefont}
+
+\begin{document}
+
+\begin{posterbard}
+
+%\postertop {Senior Project Posters in LaTeX }{Helga Homology}{Mathematics}{May 2099}{Calvin Calculus}
+
+%Scale 1 -> 1.2
+\postertopscale {\texttitlefont{The Algebra of Type Unification}}{Verity James Scheel\ \ \textit{she/they}}{Mathematics}{2022}{Robert McGrail}{1.1}
+
+\begin{posterbox}{\textbf{Abstract}}
+Type unification takes type inference a step further by allowing non-local flow of information.
+By exposing the algebraic structure of type unification, we obtain even more flexibility as well as clarity in the implementation.
+In particular, the main contribution is an explicit description of the arithmetic of universe levels and consistency of constraints of universe levels, with hints at how row types and general unification/subsumption can fit into the same framework of constraints.
+The compositional nature of the algebras involved ensure correctness and reduce arbitrariness: properties such as associativity mean that implementation details of type inference do not leak in error messages, for example.
+This project is a discovery and implementation of these ideas by extending the type theory of the Dhall programming language, with implementation in PureScript (a Haskell-like language).
+\end{posterbox}
+
+\begin{posterbox}{Type Theory}
+Giving types to programs helps us ensure those programs satisfy various nice properties.
+
+It is easy to give types to simple program fragments:
+\vspace{0.2em}
+\begin{displaymath}
+\prftree{\Gamma \vdash \inHS`"Hello, world!" ` : \inHS`Text`}
+\quad
+\prftree{\Gamma \vdash 2 + 2 : \inHS`Natural`}
+\end{displaymath}
+\begin{displaymath}
+\prftree{\Gamma \vdash [5,4,3,2,1] : \inHS`List`\ \inHS`Natural`}
+\end{displaymath}
+\vspace{0.05em}
+\begin{displaymath}
+\prftree{\Gamma \vdash y : \inHS`Natural`}{\Gamma \vdash (\lambda(x : \inHS`Natural`) \to x + y) : \forall(x : \inHS`Natural`) \to \inHS`Natural`}
+\end{displaymath}
+\vspace{0.05em}
+
+Type theory studies properties like:
+\begin{itemize}
+\item Program evaluation preserves types
+\item Program evaluation terminates at a canonical form
+\item Types are logically consistent
+\end{itemize}
+
+Type theory is all about the discipline of designing type systems to capture interesting properties of systems of computation, logic, and mathematics.
+\end{posterbox}
+
+\begin{posterbox}{Type Judgments}
+Type theory uses ``judgments'' to logically verify the types of programs.
+Hypotheses are written above a horizontal bar, with the conclusion found below it.
+These can be nested to form a proof tree.
+
+The main judgment is denoted \(\Gamma \vdash t : T\) and reads like ``the program \(t\) has type \(T\) in context \(\Gamma\)''.
+
+The context keeps track of what variables are in scope.
+For example, here is a simple version of the judgment that typechecks anonymous functions.
+
+\begin{displaymath}
+\prftree{\Gamma \vdash T_i : \inHS`Universe`\ u\quad}{\Gamma, (x : T_i) \vdash v : T_o}{\Gamma \vdash (\lambda(x : T_i) \to v) : (\forall(x : T_i) \to T_o)}
+\end{displaymath}
+
+You can see how the context gets extended from \(\Gamma\) to \(\Gamma, (x : T_i)\) to reflect that the variable \(x\) is in scope in the body of the function \(v\), and that it has the specified type \(T_i\).
+
+\end{posterbox}
+
+\begin{posterbox}{\textbf{Universes}}
+\textit{Q:} How do you study something in type theory?
+
+\textit{A:} By giving it a type!
+
+\textbf{Universes give types to types.}
+They would be uninteresting if not for some difficulties that arise in ensuring theories with universes form consistent logic systems.
+
+Maybe you've heard of Russell's Paradox:
+``Does the set of all sets that do not contain itself contain itself?'' The answer is there cannot be a set of all sets! Analogously, \textbf{there cannot be a type of all types}~\cite{10.5555/645892.671442}.
+
+So we stratify universes into layers: the smallest universe \(\inHS`Universe`\ 0\) only contains simple types, \(\inHS`Universe`\ 1\) is the first universe that contains \(\inHS`Universe`\ 0\), and so on.
+\end{posterbox}
+
+\begin{posterbox}{Universe Arithmetic}
+Let's not restrict ourselves to statically-known universe levels, but let them be abstractly tracked in the types.
+
+What operations do we need to support this?
+\begin{itemize}
+\item Zero, for the lowest universe.
+\item Successor, to find a universe for a universe.
+\item Maximum, for putting data together.
+\item Impredicative-maximum, for function types:
+  \[\imax(u; 0) = 0 \qquad \imax(u; v+1) = \max(u, v+1)\]
+\end{itemize}
+
+\begin{displaymath}
+\prftree{\Gamma \vdash \inHS`Natural` : \inHS`Universe`\ 0}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{\Gamma \vdash \inHS`Universe`\ u : \inHS`Universe`\ (u+1)}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{\Gamma \vdash T_1 : \inHS`Universe`\ u\quad}{\Gamma \vdash T_2 : \inHS`Universe`\ v}{\Gamma \vdash \{\ a : T_1,\ b : T_2\ \} : \inHS`Universe`\ \max(u,v)}
+\end{displaymath}
+
+\begin{displaymath}
+\prftree{\Gamma \vdash T_i : \inHS`Universe`\ u\quad}{\Gamma, (x : T_i) \vdash T_o : \inHS`Universe`\ v}{\Gamma \vdash (\forall(x : T_i) \to T_o) : \inHS`Universe`\ \imax(u; v)}
+\end{displaymath}
+\end{posterbox}
+
+\begin{posterbox}{Cumulativity \& Constraints}
+It's convenient to assume that if types live in a smaller universe, they also live in all larger universes.
+However, this means that programs no longer have unique types!
+
+Instead, we introduce another relation called subsumption which sits beside the typing relation to take up slack without introducing ambiguous typing.
+A smaller type is \textbf{subsumed} by a larger type when all values of the smaller type can be used in places where the larger type is expected.
+
+While doing so we keep track of the constraints that come up -- if they involve universe level variables, the constraints need to be deferred for later.
+
+\begin{displaymath}
+\prftree{\inHS`Universe`\ u \subsumedBy \inHS`Universe`\ v \Leftarrow \{u \le v\}}
+\end{displaymath}
+\vspace{0.05em}
+
+Functions are \emph{contravariant} in their input type:
+
+\begin{displaymath}
+\prftree{T^\prime_i \subsumedBy T_i \Leftarrow C_1\quad}{T_o \subsumedBy T^\prime_o \Leftarrow C_2}{(\forall(x : T_i) \to T_o) \subsumedBy (\forall(x : T^\prime_i) \to T^\prime_o) \Leftarrow C_1 \cup C_2}
+\end{displaymath}
+\end{posterbox}
+
+\begin{posterbox}{\textbf{Variables \& Polymorphism}}
+Typechecking also needs constraints now: \(\Gamma \vdash t : T \Leftarrow C\) should be read as ``Program \(t\) has type \(T\) in context \(\Gamma\) exactly when the constraints \(C\) are satisfied''.
+
+See the function application rule as one place where subsumption comes up:
+\begin{displaymath}
+\prftree{\Gamma \vdash f : \forall(x : T_1) \to T_2 \Leftarrow C_1\,}{\Gamma \vdash a : T_3 \Leftarrow C_2\,}{T_3 \subsumedBy T_1 \Leftarrow C_3}{\Gamma \vdash f(a) : T_2[x \coloneq a] \Leftarrow C_1 \cup C_2 \cup C_3}
+\end{displaymath}
+
+Cumulativity actually helps in a lot of practical cases.
+For example, with cumulativity a lot functions only need one ``large enough'' universe to cover all cases, not requiring full polymorphism:
+\begin{minted}{Haskell}
+let identity = \(T : Universe w) -> \(i : T) -> i
+\end{minted}
+
+However, a lot of type-level functions \emph{do} need polymorphism.
+They need to be the exact right size.
+
+\begin{minted}{Haskell}
+let IdentityF = \(T : Universe u) -> T in
+    [ IdentityF Natural : Universe 0
+    , IdentityF (Universe v) : Universe (v+1) ]
+\end{minted}
+
+Na\"ively this would have the constraints \(\{\ 0 \le u, u \le 0, v+1 \le u, u \le v+1\ \}\).
+But there's no solution to \(v+1 \le 0\).
+
+What needs to happen is that we instantiate \(u\) with a new metavariable every time we reference \inHS`IdentityF`.
+This makes it polymorphic, and the new constraints are \(\{\ 0 = u_1, v+1 = u_2\ \}\), where \(u_1 \ne u_2\) for the different usages.
+
+\begin{displaymath}
+\prftree{vs \coloneq metavariables(e : T) \setminus bound(\Gamma)}{us \coloneq fresh(vs)\qquad}{\Gamma, (x \coloneq e : T \Leftarrow C), \Delta \vdash x : T[vs \coloneq us] \Leftarrow C[vs \coloneq us]}
+\end{displaymath}
+
+\end{posterbox}
+
+\begin{posterbox}{\textbf{Future Work}}
+\begin{itemize}
+\item Extend constraint system to row polymorphism, for giving types to programs with extensible labelled data.
+\item Higher-order polymorphism: functions that take polymorphic arguments.
+\item Minimum operation on universe levels.
+\item Eliminate redundancy and reduce the number of variables in constraint sets when possible.
+\item Implement unification, to deal with unknown types.
+\item Principal typing: each term can produce the constraints that its context must satisfy to make it well-typed, without being given a concrete context to work with~\cite{10.1145/237721.237728}\cite{10.5555/646255.684409}.
+\end{itemize}
+\end{posterbox}
+
+
+\begin{posterbox}{References}
+\bibliography{cites.bib}
+\end{posterbox}
+
+
+\end{posterbard}
+
+\end{document}
