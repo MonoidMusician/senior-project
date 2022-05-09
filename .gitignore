@@ -6,5 +6,6 @@
 *.out
 *.synctex.gz
 *.toc
+*.bbl
+*.blg
 _minted-*/
-
